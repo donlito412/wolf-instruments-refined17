@@ -1,0 +1,123 @@
+[  4%] Built target HowlingWolvesAssets
+[  5%] Building CXX object CMakeFiles/HowlingWolves.dir/Source/PluginEditor.cpp.o
+In file included from /Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:1:
+In file included from /Users/jonfreeze/Wolf Instruments/Source/PluginEditor.h:3:
+In file included from /Users/jonfreeze/Wolf Instruments/Source/PluginProcessor.h:4:
+In file included from /Users/jonfreeze/Wolf Instruments/Source/SampleManager.h:3:
+/Users/jonfreeze/Wolf Instruments/Source/SynthEngine.h:60:28: warning: unused parameter 'newPitchWheelValue' [-Wunused-parameter]
+   60 |   void pitchWheelMoved(int newPitchWheelValue) override {}
+      |                            ^
+/Users/jonfreeze/Wolf Instruments/Source/SynthEngine.h:61:28: warning: unused parameter 'controllerNumber' [-Wunused-parameter]
+   61 |   void controllerMoved(int controllerNumber, int newControllerValue) override {}
+      |                            ^
+/Users/jonfreeze/Wolf Instruments/Source/SynthEngine.h:61:50: warning: unused parameter 'newControllerValue' [-Wunused-parameter]
+   61 |   void controllerMoved(int controllerNumber, int newControllerValue) override {}
+      |                                                  ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:8:45: warning: unused parameter 'note' [-Wunused-parameter]
+    8 | void DeepCaveLookAndFeel::drawWhiteNote(int note, juce::Graphics &g,
+      |                                             ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:10:59: warning: unused parameter 'isOver' [-Wunused-parameter]
+   10 |                                         bool isDown, bool isOver,
+      |                                                           ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:11:54: warning: unused parameter 'lineColour' [-Wunused-parameter]
+   11 |                                         juce::Colour lineColour,
+      |                                                      ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:12:54: warning: unused parameter 'textColour' [-Wunused-parameter]
+   12 |                                         juce::Colour textColour) {
+      |                                                      ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:36:45: warning: unused parameter 'note' [-Wunused-parameter]
+   36 | void DeepCaveLookAndFeel::drawBlackNote(int note, juce::Graphics &g,
+      |                                             ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:38:59: warning: unused parameter 'isOver' [-Wunused-parameter]
+   38 |                                         bool isDown, bool isOver,
+      |                                                           ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:39:54: warning: unused parameter 'noteFillColour' [-Wunused-parameter]
+   39 |                                         juce::Colour noteFillColour) {
+      |                                                      ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:60:65: warning: unused parameter 'slider' [-Wunused-parameter]
+   60 |     float rotaryStartAngle, float rotaryEndAngle, juce::Slider &slider) {
+      |                                                                 ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:103:25: warning: unused parameter 'backgroundColour' [-Wunused-parameter]
+  103 |     const juce::Colour &backgroundColour, bool shouldDrawButtonAsHighlighted,
+      |                         ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:138:67: warning: unused parameter 'minSliderPos' [-Wunused-parameter]
+  138 |                                            float sliderPos, float minSliderPos,
+      |                                                                   ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:139:50: warning: unused parameter 'maxSliderPos' [-Wunused-parameter]
+  139 |                                            float maxSliderPos,
+      |                                                  ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:141:58: warning: unused parameter 'slider' [-Wunused-parameter]
+  141 |                                            juce::Slider &slider) {
+      |                                                          ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:205:14: warning: 'Font' is deprecated: Use the constructor that takes a FontOptions argument [-Wdeprecated-declarations]
+  205 |   juce::Font logoFont(24.0f, juce::Font::bold);
+      |              ^
+/Users/jonfreeze/Wolf Instruments/build/_deps/juce-src/modules/juce_graphics/fonts/juce_Font.h:76:7: note: 'Font' has been explicitly marked deprecated here
+   76 |     [[deprecated ("Use the constructor that takes a FontOptions argument")]]
+      |       ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:245:26: error: no member named 'getAPVTS' in 'HowlingWolvesAudioProcessor'
+  245 |           audioProcessor.getAPVTS(), "ATTACK", attackSlider)),
+      |           ~~~~~~~~~~~~~~ ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:247:26: error: no member named 'getAPVTS' in 'HowlingWolvesAudioProcessor'
+  247 |           audioProcessor.getAPVTS(), "DECAY", decaySlider)),
+      |           ~~~~~~~~~~~~~~ ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:249:26: error: no member named 'getAPVTS' in 'HowlingWolvesAudioProcessor'
+  249 |           audioProcessor.getAPVTS(), "SUSTAIN", sustainSlider)),
+      |           ~~~~~~~~~~~~~~ ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:251:26: error: no member named 'getAPVTS' in 'HowlingWolvesAudioProcessor'
+  251 |           audioProcessor.getAPVTS(), "RELEASE", releaseSlider)),
+      |           ~~~~~~~~~~~~~~ ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:253:26: error: no member named 'getAPVTS' in 'HowlingWolvesAudioProcessor'
+  253 |           audioProcessor.getAPVTS(), "GAIN", gainSlider)),
+      |           ~~~~~~~~~~~~~~ ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:254:7: warning: field 'presetBrowser' will be initialized after field 'keyboardComponent' [-Wreorder-ctor]
+  254 |       presetBrowser(audioProcessor.getPresetManager()),
+      |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  255 |       keyboardComponent(audioProcessor.getKeyboardState(),
+      |       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      |       presetBrowser(audioProcessor.getPresetManager())
+  256 |                         juce::MidiKeyboardComponent::horizontalKeyboard) {
+      |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:296:19: warning: 'Font' is deprecated: Use the constructor that takes a FontOptions argument [-Wdeprecated-declarations]
+  296 |     label.setFont(juce::Font(14.0f, juce::Font::bold));
+      |                   ^
+/Users/jonfreeze/Wolf Instruments/build/_deps/juce-src/modules/juce_graphics/fonts/juce_Font.h:76:7: note: 'Font' has been explicitly marked deprecated here
+   76 |     [[deprecated ("Use the constructor that takes a FontOptions argument")]]
+      |       ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:296:19: warning: 'Font' is deprecated: Use the constructor that takes a FontOptions argument [-Wdeprecated-declarations]
+  296 |     label.setFont(juce::Font(14.0f, juce::Font::bold));
+      |                   ^
+/Users/jonfreeze/Wolf Instruments/build/_deps/juce-src/modules/juce_graphics/fonts/juce_Font.h:76:7: note: 'Font' has been explicitly marked deprecated here
+   76 |     [[deprecated ("Use the constructor that takes a FontOptions argument")]]
+      |       ^
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:362:8: warning: unused variable 'keyboardArea' [-Wunused-variable]
+  362 |   auto keyboardArea = area.removeFromBottom(50.0f);
+      |        ^~~~~~~~~~~~
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:468:35: warning: implicit conversion turns floating-point number into integer: 'float' to 'int' [-Wfloat-conversion]
+  468 |                       .withHeight(topRowH)
+      |                        ~~~~~~~~~~ ^~~~~~~
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:467:54: warning: implicit conversion turns floating-point number into integer: 'float' to 'int' [-Wfloat-conversion]
+  467 |                       .withWidth(mainArea.getWidth() - (140 + gap))
+      |                        ~~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:466:56: warning: implicit conversion turns floating-point number into integer: 'float' to 'int' [-Wfloat-conversion]
+  466 |   auto modPanel = mainArea.withX(mainArea.getX() + 140 + gap)
+      |                            ~~~~~ ~~~~~~~~~~~~~~~~~~~~~~^~~~~
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:517:38: warning: implicit conversion turns floating-point number into integer: 'float' to 'int' [-Wfloat-conversion]
+  517 |                          .withHeight(bottomRowH)
+      |                           ~~~~~~~~~~ ^~~~~~~~~~
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:516:37: warning: implicit conversion turns floating-point number into integer: 'float' to 'int' [-Wfloat-conversion]
+  516 |                          .withWidth(panelW)
+      |                           ~~~~~~~~~ ^~~~~~
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:515:58: warning: implicit conversion turns floating-point number into integer: 'float' to 'int' [-Wfloat-conversion]
+  515 |                          .withX(mainArea.getX() + panelW + gap) // Right side
+      |                           ~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:514:63: warning: implicit conversion turns floating-point number into integer: 'float' to 'int' [-Wfloat-conversion]
+  514 |   auto outputPanel = mainArea.withY(mainArea.getY() + topRowH + gap)
+      |                               ~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+/Users/jonfreeze/Wolf Instruments/Source/PluginEditor.cpp:521:57: warning: implicit conversion turns floating-point number into integer: 'float' to 'int' [-Wfloat-conversion]
+  521 |       outputPanel.removeFromTop(outputPanel.getHeight() * 0.5f).reduced(0, 5);
+      |                   ~~~~~~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~
+28 warnings and 5 errors generated.
+make[2]: *** [CMakeFiles/HowlingWolves.dir/Source/PluginEditor.cpp.o] Error 1
+make[1]: *** [CMakeFiles/HowlingWolves.dir/all] Error 2
+make: *** [all] Error 2
