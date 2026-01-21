@@ -113,22 +113,22 @@ void PlayTab::resized() {
   adsrBox.flexDirection = juce::FlexBox::Direction::row;
   adsrBox.justifyContent = juce::FlexBox::JustifyContent::flexStart;
   adsrBox.items.add(juce::FlexItem(attackSlider)
-                        .withWidth(40)
-                        .withHeight(40)
+                        .withWidth(60)
+                        .withHeight(60)
                         .withMargin({0, 10, 0, 0}));
   adsrBox.items.add(juce::FlexItem(decaySlider)
-                        .withWidth(40)
-                        .withHeight(40)
+                        .withWidth(60)
+                        .withHeight(60)
                         .withMargin({0, 10, 0, 0}));
   adsrBox.items.add(juce::FlexItem(sustainSlider)
-                        .withWidth(40)
-                        .withHeight(40)
+                        .withWidth(60)
+                        .withHeight(60)
                         .withMargin({0, 10, 0, 0}));
-  adsrBox.items.add(juce::FlexItem(releaseSlider).withWidth(40).withHeight(40));
+  adsrBox.items.add(juce::FlexItem(releaseSlider).withWidth(60).withHeight(60));
 
   mainLayout.items.add(juce::FlexItem(adsrLabel).withHeight(20));
   mainLayout.items.add(
-      juce::FlexItem(adsrBox).withHeight(50).withMargin({0, 0, 20, 0}));
+      juce::FlexItem(adsrBox).withHeight(70).withMargin({0, 0, 20, 0}));
 
   // Sample Section
   mainLayout.items.add(juce::FlexItem(sampleLabel).withHeight(20));

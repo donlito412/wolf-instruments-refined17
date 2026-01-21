@@ -97,35 +97,81 @@ void ModernCyberLookAndFeel::drawLinearSlider(
 void ModernCyberLookAndFeel::drawRotarySlider(
     juce::Graphics &g, int x, int y, int width, int height, float sliderPos,
     float rotaryStartAngle, float rotaryEndAngle, juce::Slider &slider) {
-  auto radius = juce::jmin(width / 2, height / 2) - 4.0f;
-  auto centreX = x + width * 0.5f;
-  auto centreY = y + height * 0.5f;
-  auto angle =
+
+  auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat();
+  auto center = bounds.getCentre();
+  auto radius = juce::jmin(width, height) / 2.0f - 10.0f; // Padding
+
+  // 1. Tick Marks (Interactive)
+  int numTicks = 15;
+  // Calculate angle based on slider pos
+  float currentAngle =
       rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+  float angleStep = (rotaryEndAngle - rotaryStartAngle) / (numTicks - 1);
 
-  // Background circle
-  g.setColour(WolfColors::CONTROL_BG);
-  g.fillEllipse(centreX - radius, centreY - radius, radius * 2, radius * 2);
+  for (int i = 0; i < numTicks; ++i) {
+    float angle = rotaryStartAngle + i * angleStep;
+    // Active ticks are those passed by the knob
+    bool isActive = angle <= currentAngle + 0.01f;
 
-  // Progress arc (cyan, 2px stroke, no glow)
-  juce::Path arc;
-  arc.addCentredArc(centreX, centreY, radius - 2, radius - 2, 0.0f,
-                    rotaryStartAngle, angle, true);
+    if (isActive && slider.isEnabled())
+      g.setColour(WolfColors::ACCENT_CYAN);
+    else
+      g.setColour(WolfColors::ACCENT_CYAN.withAlpha(0.2f));
+
+    auto tickStart = center.getPointOnCircumference(radius + 2.0f, angle);
+    auto tickEnd = center.getPointOnCircumference(radius + 6.0f, angle);
+    g.drawLine(juce::Line<float>(tickStart, tickEnd), 1.5f);
+  }
+
+  // 2. Brushed Metal Center
+  auto knobRadius = radius - 2.0f;
+  juce::ColourGradient metalGradient(
+      juce::Colour(0xff444444), center.getX() - knobRadius,
+      center.getY() - knobRadius, juce::Colour(0xff222222),
+      center.getX() + knobRadius, center.getY() + knobRadius, true);
+  metalGradient.addColour(0.5, juce::Colour(0xff333333));
+  g.setGradientFill(metalGradient);
+  g.fillEllipse(center.getX() - knobRadius, center.getY() - knobRadius,
+                knobRadius * 2, knobRadius * 2);
+
+  // Metallic Rim
+  g.setColour(juce::Colour(0xff666666));
+  g.drawEllipse(center.getX() - knobRadius, center.getY() - knobRadius,
+                knobRadius * 2, knobRadius * 2, 2.0f);
+
+  // 3. Progress Arc (Cyan)
+  juce::Path arcPath;
+  float arcRadius = knobRadius - 3.0f;
+
+  // Background Arc
+  juce::Path bgArc;
+  bgArc.addCentredArc(center.getX(), center.getY(), arcRadius, arcRadius, 0.0f,
+                      rotaryStartAngle, rotaryEndAngle, true);
+  g.setColour(juce::Colour(0xff111111));
+  g.strokePath(bgArc, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved,
+                                           juce::PathStrokeType::rounded));
+
+  // Active Arc
+  arcPath.addCentredArc(center.getX(), center.getY(), arcRadius, arcRadius,
+                        0.0f, rotaryStartAngle, currentAngle, true);
   g.setColour(WolfColors::ACCENT_CYAN);
-  g.strokePath(arc, juce::PathStrokeType(2.0f));
+  g.strokePath(arcPath, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved,
+                                             juce::PathStrokeType::rounded));
+  g.setColour(WolfColors::ACCENT_GLOW);
+  g.strokePath(arcPath, juce::PathStrokeType(8.0f, juce::PathStrokeType::curved,
+                                             juce::PathStrokeType::rounded));
 
-  // Center indicator line
-  juce::Path indicator;
-  indicator.addLineSegment(juce::Line<float>(centreX, centreY - radius * 0.4f,
-                                             centreX, centreY - radius * 0.7f),
-                           2.0f);
-  indicator.applyTransform(
-      juce::AffineTransform::rotation(angle, centreX, centreY));
+  // 4. Indicator (Pointer) - DOT
+  juce::Path pointerPath;
+  float dotSize = 5.0f;
+  // Position dot at the rim, rotating with value
+  float dotY = -knobRadius + 8.0f;
+  pointerPath.addEllipse(-dotSize / 2.0f, dotY - dotSize / 2.0f, dotSize,
+                         dotSize);
+
+  pointerPath.applyTransform(
+      juce::AffineTransform::rotation(currentAngle).translated(center));
   g.setColour(WolfColors::TEXT_PRIMARY);
-  g.fillPath(indicator);
-
-  // Subtle border
-  g.setColour(WolfColors::BORDER_SUBTLE);
-  g.drawEllipse(centreX - radius, centreY - radius, radius * 2, radius * 2,
-                1.0f);
+  g.fillPath(pointerPath);
 }
