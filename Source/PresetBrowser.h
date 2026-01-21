@@ -8,8 +8,11 @@ public:
   PresetBrowser(PresetManager &pm);
   ~PresetBrowser() override;
 
+  std::function<void()> onPresetSelected;
+
   void paint(juce::Graphics &) override;
   void resized() override;
+  void visibilityChanged() override;
 
   // ListBoxModel overrides
   int getNumRows() override;

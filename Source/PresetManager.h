@@ -2,12 +2,15 @@
 
 #include <JuceHeader.h>
 
+class SampleManager; // Forward declaration
+
 class PresetManager {
 public:
   static const juce::File defaultDirectory;
+  static const juce::File factoryDirectory;
   static const juce::String presetExtension;
 
-  PresetManager(juce::AudioProcessorValueTreeState &);
+  PresetManager(juce::AudioProcessorValueTreeState &, SampleManager &);
 
   void savePreset(const juce::String &presetName,
                   const juce::String &category = "All");
@@ -16,7 +19,7 @@ public:
   int loadNextPreset();
   int loadPreviousPreset();
 
-  juce::StringArray getAllPresets() const;
+  juce::Array<juce::File> getAllPresets() const;
   juce::String getCurrentPreset() const;
 
   juce::File getPresetFolder() const;
@@ -26,5 +29,6 @@ private:
   void valueTreeRedirected(juce::ValueTree &treeThatChanged);
 
   juce::AudioProcessorValueTreeState &valueTreeState;
+  SampleManager &sampleManager;
   juce::String currentPresetName;
 };

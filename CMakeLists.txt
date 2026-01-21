@@ -47,8 +47,6 @@ target_sources(HowlingWolves
         Source/PresetBrowser.h
         Source/VisualizerComponent.cpp
         Source/VisualizerComponent.h
-        Source/DeepCaveLookAndFeel.cpp
-        Source/DeepCaveLookAndFeel.h
 )
 
 # Link against JUCE libraries

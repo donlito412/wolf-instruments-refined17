@@ -1,6 +1,5 @@
 #pragma once
 
-#include "VisualizerFIFO.h"
 #include <JuceHeader.h>
 #include <array>
 #include <vector>
@@ -14,14 +13,13 @@ public:
   void paint(juce::Graphics &g) override;
   void timerCallback() override;
 
-  void setFIFO(VisualizerFIFO *fifo) { externalFIFO = fifo; }
-
 private:
   static const int fftOrder = 11;
   static const int fftSize = 1 << fftOrder;
   static const int scopeSize = 512;
 
-  VisualizerFIFO *externalFIFO = nullptr;
+  juce::AbstractFifo fifo{4096};
+  std::array<float, 4096> fifoBuffer;
   std::array<float, scopeSize> scopeData;
 
   // Logic:

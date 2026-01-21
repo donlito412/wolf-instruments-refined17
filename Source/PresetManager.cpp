@@ -1,15 +1,23 @@
 #include "PresetManager.h"
+#include "SampleManager.h"
 
 const juce::File PresetManager::defaultDirectory{
     juce::File::getSpecialLocation(juce::File::userMusicDirectory)
         .getChildFile("Wolf Instruments")
         .getChildFile("Presets")};
 
-const juce::String PresetManager::presetExtension{".xml"};
+const juce::File PresetManager::factoryDirectory{
+    juce::File::getSpecialLocation(juce::File::userMusicDirectory)
+        .getChildFile("Wolf Instruments")
+        .getChildFile("Factory Presets")};
 
-PresetManager::PresetManager(juce::AudioProcessorValueTreeState &apvts)
-    : valueTreeState(apvts) {
-  // Create default directory if it doesn't exist
+// Changed extension to .wav per user request
+const juce::String PresetManager::presetExtension{".wav"};
+
+PresetManager::PresetManager(juce::AudioProcessorValueTreeState &apvts,
+                             SampleManager &sm)
+    : valueTreeState(apvts), sampleManager(sm) {
+  // Create default (User) directory if it doesn't exist
   if (!defaultDirectory.exists()) {
     const auto result = defaultDirectory.createDirectory();
     if (result.failed()) {
@@ -17,7 +25,7 @@ PresetManager::PresetManager(juce::AudioProcessorValueTreeState &apvts)
     }
   }
 
-  // Ensure Category Subfolders exist
+  // Ensure Category Subfolders exist (in User directory)
   juce::StringArray categories = {"Bass", "Leads",    "Pads",
                                   "Keys", "Plucks",   "Drums",
                                   "FX",   "Textures", "Sequence"};
@@ -30,28 +38,10 @@ PresetManager::PresetManager(juce::AudioProcessorValueTreeState &apvts)
 
 void PresetManager::savePreset(const juce::String &presetName,
                                const juce::String &category) {
-  if (presetName.isEmpty())
-    return;
-
-  auto state = valueTreeState.copyState();
-  state.setProperty("Category", category, nullptr);
-
-  const auto xml = state.createXml();
-
-  // Save to Category Folder (or root if "All")
-  juce::File folder = defaultDirectory;
-  if (category != "All") {
-    folder = defaultDirectory.getChildFile(category);
-    if (!folder.exists())
-      folder.createDirectory();
-  }
-
-  const auto presetFile = folder.getChildFile(presetName + presetExtension);
-
-  if (!xml->writeTo(presetFile)) {
-    DBG("Could not create preset file: " + presetFile.getFullPathName());
-  }
-  currentPresetName = presetName;
+  // Saving WAV presets is not yet supported via this interface.
+  // We could implement saving current settings + sound reference to XML if
+  // needed in future.
+  DBG("Saving presets not supported in WAV mode yet.");
 }
 
 void PresetManager::deletePreset(const juce::String &presetName) {
@@ -63,6 +53,12 @@ void PresetManager::deletePreset(const juce::String &presetName) {
 
   if (!presetFile.existsAsFile()) {
     DBG("Preset file " + presetName + " does not exist");
+    return;
+  }
+
+  // Prevent deleting Factory Presets (Simple check)
+  if (presetFile.isAChildOf(factoryDirectory)) {
+    DBG("Cannot delete factory preset");
     return;
   }
 
@@ -86,29 +82,37 @@ void PresetManager::loadPreset(const juce::String &presetName) {
     return;
   }
 
-  // Load XML
-  const auto xml = juce::parseXML(presetFile);
-  if (xml != nullptr) {
-    // Replace state
-    valueTreeState.replaceState(juce::ValueTree::fromXml(*xml));
-    currentPresetName = presetName;
-  }
+  // Load WAV via SampleManager
+  sampleManager.loadSound(presetFile);
+  currentPresetName = presetName;
 }
 
-// Helper to find file across subfolders
+// Helper to find file across subfolders (User + Factory)
+// Helper to find file across subfolders (User + Factory)
 juce::File PresetManager::getPresetFile(const juce::String &presetName) const {
-  auto file = defaultDirectory.getChildFile(presetName + presetExtension);
-  if (file.existsAsFile())
-    return file;
+  // Helper to search a root directory recursively
+  auto findInRoot = [&](const juce::File &root) -> juce::File {
+    auto options = juce::File::TypesOfFileToFind::findFiles;
+    // Recursive search
+    auto allFiles = root.findChildFiles(options, true, "*");
+    for (const auto &f : allFiles) {
+      if (f.getFileNameWithoutExtension() == presetName) {
+        // Check extension case-insensitive
+        if (f.getFileExtension().equalsIgnoreCase(presetExtension))
+          return f;
+      }
+    }
+    return juce::File();
+  };
 
-  // Scan subfolders
-  auto subDirs =
-      defaultDirectory.findChildFiles(juce::File::findDirectories, false);
-  for (const auto &dir : subDirs) {
-    file = dir.getChildFile(presetName + presetExtension);
-    if (file.existsAsFile())
-      return file;
-  }
+  auto f = findInRoot(defaultDirectory);
+  if (f.existsAsFile())
+    return f;
+
+  f = findInRoot(factoryDirectory);
+  if (f.existsAsFile())
+    return f;
+
   return juce::File();
 }
 
@@ -117,10 +121,18 @@ int PresetManager::loadNextPreset() {
   if (allPresets.isEmpty())
     return -1;
 
-  const auto currentIndex = allPresets.indexOf(currentPresetName);
+  int currentIndex = -1;
+  // Find current index manually
+  for (int i = 0; i < allPresets.size(); ++i) {
+    if (allPresets[i].getFileNameWithoutExtension() == currentPresetName) {
+      currentIndex = i;
+      break;
+    }
+  }
+
   const auto nextIndex =
       currentIndex + 1 > allPresets.size() - 1 ? 0 : currentIndex + 1;
-  loadPreset(allPresets[nextIndex]);
+  loadPreset(allPresets[nextIndex].getFileNameWithoutExtension());
   return nextIndex;
 }
 
@@ -129,33 +141,42 @@ int PresetManager::loadPreviousPreset() {
   if (allPresets.isEmpty())
     return -1;
 
-  const auto currentIndex = allPresets.indexOf(currentPresetName);
+  int currentIndex = -1;
+  for (int i = 0; i < allPresets.size(); ++i) {
+    if (allPresets[i].getFileNameWithoutExtension() == currentPresetName) {
+      currentIndex = i;
+      break;
+    }
+  }
+
   const auto prevIndex =
       currentIndex - 1 < 0 ? allPresets.size() - 1 : currentIndex - 1;
-  loadPreset(allPresets[prevIndex]);
+  loadPreset(allPresets[prevIndex].getFileNameWithoutExtension());
   return prevIndex;
 }
 
-juce::StringArray PresetManager::getAllPresets() const {
-  juce::StringArray presets;
+juce::File PresetManager::getPresetFolder() const { return defaultDirectory; }
 
-  // Scan Root
-  auto fileArray = defaultDirectory.findChildFiles(
-      juce::File::TypesOfFileToFind::findFiles, false, "*" + presetExtension);
-  for (const auto &file : fileArray) {
-    presets.add(file.getFileNameWithoutExtension());
-  }
+juce::Array<juce::File> PresetManager::getAllPresets() const {
+  juce::Array<juce::File> presets;
 
-  // Scan Subfolders
-  auto subDirs =
-      defaultDirectory.findChildFiles(juce::File::findDirectories, false);
-  for (const auto &dir : subDirs) {
-    fileArray =
-        dir.findChildFiles(juce::File::findFiles, false, "*" + presetExtension);
-    for (const auto &file : fileArray) {
-      presets.add(file.getFileNameWithoutExtension());
+  auto options = juce::File::TypesOfFileToFind::findFiles;
+
+  auto scanRoot = [&](const juce::File &root) {
+    if (!root.isDirectory())
+      return;
+    // Recursively find all files
+    auto allFiles = root.findChildFiles(options, true, "*"); // Scan everything
+
+    for (const auto &file : allFiles) {
+      if (file.getFileExtension().equalsIgnoreCase(presetExtension)) {
+        presets.add(file);
+      }
     }
-  }
+  };
+
+  scanRoot(defaultDirectory);
+  scanRoot(factoryDirectory);
 
   return presets;
 }
@@ -163,5 +184,3 @@ juce::StringArray PresetManager::getAllPresets() const {
 juce::String PresetManager::getCurrentPreset() const {
   return currentPresetName;
 }
-
-juce::File PresetManager::getPresetFolder() const { return defaultDirectory; }

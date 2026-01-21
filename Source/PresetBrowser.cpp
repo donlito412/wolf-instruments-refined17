@@ -86,25 +86,57 @@ void PresetBrowser::paintListBoxItem(int rowNumber, juce::Graphics &g,
   g.fillRect(0, height - 1, width, 1); // Separator
 }
 
+void PresetBrowser::listBoxItemClicked(int rowNumber,
+                                       const juce::MouseEvent &) {
+  if (rowNumber < 0 || rowNumber >= displayedPresets.size())
+    return;
+
+  const auto presetName = displayedPresets[rowNumber];
+  presetManager.loadPreset(presetName);
+
+  if (onPresetSelected)
+    onPresetSelected();
+}
+
 void PresetBrowser::selectedRowsChanged(int) {}
 
 void PresetBrowser::refresh() {
   allPresetsInfo.clear();
-  juce::StringArray files = presetManager.getAllPresets();
+  auto files = presetManager.getAllPresets();
 
   // Scan metadata
-  for (const auto &name : files) {
-    juce::File file = presetManager.getPresetFile(name);
+  for (const auto &file : files) {
+    juce::String name = file.getFileNameWithoutExtension();
+
+    // For WAVs, we don't have metadata yet.
+    // In future, we could look for a matching .xml file or check parent folder
+    // name as Category. For now, default category to file's parent folder name
+    // if inside a subfolder?
 
     juce::String category = "All";
-    // Fixed: Use getStringAttribute for XmlElement, not getProperty
-    if (auto xml = juce::parseXML(file)) {
-      category = xml->getStringAttribute("Category", "All");
+
+    // Check if valid file
+    if (file.existsAsFile()) {
+      // Use parent directory name as category if it's not the root Preset
+      // folder
+      auto parent = file.getParentDirectory();
+      if (parent != presetManager.getPresetFolder() &&
+          parent != PresetManager::factoryDirectory) {
+        category = parent.getFileName();
+      }
     }
+
     allPresetsInfo.push_back({name, category});
   }
 
   filterPresets();
+}
+
+void PresetBrowser::visibilityChanged() {
+  if (isVisible()) {
+    searchBox.setText("", juce::dontSendNotification);
+    refresh();
+  }
 }
 
 void PresetBrowser::filterPresets() {
@@ -122,63 +154,5 @@ void PresetBrowser::filterPresets() {
     }
   }
   presetList.updateContent();
-
-  // Sync Selection
-  juce::String current = presetManager.getCurrentPreset();
-  int index = displayedPresets.indexOf(current);
-  if (index >= 0) {
-    presetList.selectRow(index);
-  } else {
-    presetList.deselectAllRows();
-  }
-
   repaint();
-}
-
-void PresetBrowser::listBoxItemClicked(int rowNumber,
-                                       const juce::MouseEvent &e) {
-  if (rowNumber < 0 || rowNumber >= displayedPresets.size())
-    return;
-
-  if (e.mods.isPopupMenu()) {
-    juce::PopupMenu menu;
-    menu.addItem(1, "Delete Preset");
-
-    // Async menu
-    menu.showMenuAsync(
-        juce::PopupMenu::Options(), [this, rowNumber](int result) {
-          if (result == 1) {
-            // Confirm Delete
-            juce::NativeMessageBox::showAsync(
-                juce::MessageBoxOptions()
-                    .withIconType(juce::MessageBoxIconType::WarningIcon)
-                    .withTitle("Delete Preset")
-                    .withMessage("Are you sure you want to delete '" +
-                                 displayedPresets[rowNumber] + "'?")
-                    .withButton("Cancel")
-                    .withButton("Delete"),
-                [this, rowNumber](int buttonId) {
-                  if (buttonId == 0)
-                    return; // Cancel leads to 0 usually? Wait, button index.
-                            // Verify button IDs. Standard is: 0=Cancel? No.
-                  // Usually 1=ok, 0=cancel. But let's check docs or assume safe
-                  // default. Actually NativeMessageBox returns result. Let's us
-                  // safe approach: explicit buttons. But deleting is permanent.
-                  // Let's just do the delete if confirmed.
-                  // Note: showAsync callback result depends on OS.
-
-                  // Actually, let's just do it directly for now or use a
-                  // simpler confirmation if possible. Or trust the user clicked
-                  // "Delete" in the menu. Wait, deleting files is dangerous.
-                  // I'll implement the Delete call:
-
-                  presetManager.deletePreset(displayedPresets[rowNumber]);
-                  refresh();
-                });
-          }
-        });
-  } else {
-    // Left Click - Load
-    presetManager.loadPreset(displayedPresets[rowNumber]);
-  }
 }
