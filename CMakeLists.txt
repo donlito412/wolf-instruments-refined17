@@ -47,6 +47,8 @@ target_sources(HowlingWolves
         Source/PresetBrowser.h
         Source/VisualizerComponent.cpp
         Source/VisualizerComponent.h
+        Source/CustomKnobLookAndFeel.cpp
+        Source/CustomKnobLookAndFeel.h
 )
 
 # Link against JUCE libraries

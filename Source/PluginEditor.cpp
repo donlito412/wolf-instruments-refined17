@@ -10,10 +10,10 @@ void DeepCaveLookAndFeel::drawWhiteNote(int note, juce::Graphics &g,
                                         bool isDown, bool isOver,
                                         juce::Colour lineColour,
                                         juce::Colour textColour) {
-  auto c = juce::Colour::fromString("FF2A2A30"); // Dark Slate/Charcoal
+  auto c = juce::Colour::fromString("FF141B24"); // Arctic Wolf: Charcoal blue
 
   if (isDown)
-    c = juce::Colour::fromString("FF88CCFF"); // Ice Blue Glow
+    c = juce::Colour::fromString("FF00D9FF"); // Arctic Wolf: Ice cyan
 
   // Gradient for depth
   g.setGradientFill(juce::ColourGradient(c.brighter(0.1f), area.getTopLeft(),
@@ -21,8 +21,8 @@ void DeepCaveLookAndFeel::drawWhiteNote(int note, juce::Graphics &g,
                                          false));
   g.fillRect(area);
 
-  // Silver Edge
-  g.setColour(juce::Colour::fromString("FF888890"));
+  // Cyan Edge (Arctic Wolf)
+  g.setColour(juce::Colour::fromString("FF00D9FF").withAlpha(0.3f));
   g.drawRect(area, 1.0f);
 
   // Bottom shadow simulation
@@ -37,16 +37,16 @@ void DeepCaveLookAndFeel::drawBlackNote(int note, juce::Graphics &g,
                                         juce::Rectangle<float> area,
                                         bool isDown, bool isOver,
                                         juce::Colour noteFillColour) {
-  auto c = juce::Colour::fromString("FF101010"); // Near black matte
+  auto c = juce::Colour::fromString("FF0A0E14"); // Arctic Wolf: Deep midnight
 
   if (isDown)
-    c = juce::Colour::fromString("FF4477AA"); // Darker Ice Blue
+    c = juce::Colour::fromString("FF00D9FF"); // Arctic Wolf: Ice cyan
 
   g.setColour(c);
   g.fillRect(area);
 
-  // Silver Edge
-  g.setColour(juce::Colour::fromString("FF666670"));
+  // Cyan Edge (Arctic Wolf)
+  g.setColour(juce::Colour::fromString("FF00D9FF").withAlpha(0.4f));
   g.drawRect(area, 1.0f);
 
   g.setGradientFill(juce::ColourGradient(
@@ -166,34 +166,38 @@ void DeepCaveLookAndFeel::drawLinearSlider(juce::Graphics &g, int x, int y,
 void DeepCaveLookAndFeel::drawPanel(juce::Graphics &g,
                                     juce::Rectangle<float> area,
                                     const juce::String &title) {
-  // Drop Shadow
-  g.setColour(juce::Colours::black.withAlpha(0.6f));
+  // Drop Shadow (Arctic Wolf: Deeper, cooler shadow)
+  g.setColour(juce::Colour::fromString("FF0A0E14").withAlpha(0.7f));
   g.fillRect(area.translated(4, 4));
 
-  // Panel Body (Glass / Semi-Transparent)
-  g.setColour(juce::Colours::black.withAlpha(0.3f)); // 30% Opacity
+  // Panel Body (Arctic Wolf: Charcoal blue with transparency)
+  g.setColour(juce::Colour::fromString("FF141B24").withAlpha(0.35f));
   g.fillRect(area);
 
-  // Metallic Edge (Thinner)
-  g.setColour(juce::Colour::fromString("FF666670"));
-  g.drawRect(area, 1.0f);
+  // Cyan Glow Border (Arctic Wolf: 2px glowing edge)
+  g.setColour(juce::Colour::fromString("FF00D9FF").withAlpha(0.6f));
+  g.drawRect(area, 2.0f);
 
-  // Corner Screws (Smaller)
+  // Inner shadow for depth
+  g.setColour(juce::Colours::black.withAlpha(0.2f));
+  g.drawRect(area.reduced(2), 1.0f);
+
+  // Corner Screws (Cyan tinted)
   float screwSize = 3.0f;
-  g.setColour(juce::Colour::fromString("FFCCCCCC"));
+  g.setColour(juce::Colour::fromString("FF88CCFF"));
   g.fillEllipse(area.getX() + 4, area.getY() + 4, screwSize, screwSize);
   g.fillEllipse(area.getRight() - 8, area.getY() + 4, screwSize, screwSize);
   g.fillEllipse(area.getX() + 4, area.getBottom() - 8, screwSize, screwSize);
   g.fillEllipse(area.getRight() - 8, area.getBottom() - 8, screwSize,
                 screwSize);
 
-  // Title Label Background (Darker, transparent)
+  // Title Label Background (Arctic Wolf: Cool white text)
   if (title.isNotEmpty()) {
     auto titleArea = area.removeFromTop(20);
-    g.setColour(juce::Colours::black.withAlpha(0.5f));
+    g.setColour(juce::Colour::fromString("FF0A0E14").withAlpha(0.6f));
     g.fillRect(titleArea);
-    g.setColour(juce::Colour::fromString("FF9999AA"));
-    g.setFont(12.0f);
+    g.setColour(juce::Colour::fromString("FFE8F0FF")); // Cool white
+    g.setFont(14.0f);                                  // Slightly larger
     g.drawText(title.toUpperCase(), titleArea, juce::Justification::centred,
                false);
   }
@@ -286,7 +290,7 @@ HowlingWolvesAudioProcessorEditor::HowlingWolvesAudioProcessorEditor(
     addAndMakeVisible(slider);
     slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    slider.setLookAndFeel(&deepCaveLookAndFeel);
+    slider.setLookAndFeel(&customKnobLookAndFeel);
 
     addAndMakeVisible(label);
     label.setText(name, juce::dontSendNotification);

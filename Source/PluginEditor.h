@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CustomKnobLookAndFeel.h"
 #include "PluginProcessor.h"
 #include "PresetBrowser.h"
 #include "VisualizerComponent.h"
@@ -85,6 +86,8 @@ private:
   // Overlay
   VisualizerComponent visualizer;
   PresetBrowser presetBrowser;
+
+  CustomKnobLookAndFeel customKnobLookAndFeel;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
       HowlingWolvesAudioProcessorEditor)
