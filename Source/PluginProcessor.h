@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EffectsProcessor.h"
 #include "FilterProcessor.h"
 #include "LFOProcessor.h"
 #include "PresetManager.h"
@@ -51,7 +52,7 @@ public:
   PresetManager &getPresetManager() { return presetManager; }
 
   // Visualizer FIFO
-  // Ideally, PluginEditor polls this, but we need to push to it.
+  // Ideally, PluginProcessor polls this, but we need to push to it.
   // Actually, VisualizerComponent has the FIFO. Editor owns
   // VisualizerComponent. So Processor needs to push to Editor? No, bad
   // coupling. Better: Processor has a method `pushToVisualizer` or just exposes
@@ -82,6 +83,7 @@ private:
   // Filter and LFO
   FilterProcessor filterProcessor;
   LFOProcessor lfoProcessor;
+  EffectsProcessor effectsProcessor;
 
   //==============================================================================
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HowlingWolvesAudioProcessor)

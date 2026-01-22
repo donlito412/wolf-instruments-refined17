@@ -44,6 +44,10 @@ public:
                  int currentPitchWheelPosition) override;
   void stopNote(float velocity, bool allowTailOff) override;
 
+  // New Sample Params
+  void updateSampleParams(float tune, float sampleStart, float sampleEnd,
+                          bool loop);
+
   // Override render to add post-processing (Filter)
   void renderNextBlock(juce::AudioBuffer<float> &outputBuffer, int startSample,
                        int numSamples) override;
@@ -59,6 +63,16 @@ private:
   juce::ADSR adsr;
   juce::ADSR::Parameters adsrParams;
   float lfoRate = 0.0f;
+
+  // Sample Parameters
+  float tuneSemitones = 0.0f;
+  float sampleStartPercent = 0.0f;
+  float sampleEndPercent = 1.0f;
+  bool isLooping = true;
+
+  // Base parameters for modulation
+  float baseCutoff = 20000.0f;
+  float baseResonance = 0.1f;
 
   juce::AudioBuffer<float> tempBuffer;
 
@@ -80,4 +94,7 @@ public:
   void updateParams(float attack, float decay, float sustain, float release,
                     float cutoff, float resonance, float lfoRate,
                     float lfoDepth);
+
+  void updateSampleParams(float tune, float sampleStart, float sampleEnd,
+                          bool loop);
 };

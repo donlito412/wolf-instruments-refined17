@@ -21,17 +21,24 @@ private:
 
   // ADSR Section
   juce::Slider attackSlider, decaySlider, sustainSlider, releaseSlider;
+  juce::Label attackLabel, decayLabel, sustainLabel, releaseLabel; // Added
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
       attackAttachment, decayAttachment, sustainAttachment, releaseAttachment;
   juce::Label adsrLabel;
 
   // Sample Control Section
-  juce::Slider startSlider, endSlider; // Placeholder for now (no params yet?)
+  juce::Slider startSlider, endSlider;
+  juce::Label startLabel, endLabel; // Added
   juce::ToggleButton loopToggle;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
+      startAttachment, endAttachment;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
+      loopAttachment;
   juce::Label sampleLabel;
 
   // Output Section
   juce::Slider gainSlider, panSlider, tuneSlider;
+  juce::Label gainLabel, panLabel, tuneLabel; // Added
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
       gainAttachment, panAttachment, tuneAttachment;
   juce::Label outputLabel;

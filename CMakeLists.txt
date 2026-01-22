@@ -51,6 +51,8 @@ target_sources(HowlingWolves
         Source/ModulateTab.h
         Source/EffectsTab.cpp
         Source/EffectsTab.h
+        Source/EffectsProcessor.cpp
+        Source/EffectsProcessor.h
         Source/SettingsTab.cpp
         Source/SettingsTab.h
         Source/VisualizerComponent.cpp

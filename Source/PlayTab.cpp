@@ -1,14 +1,25 @@
 #include "PlayTab.h"
 
-PlayTab::PlayTab(HowlingWolvesAudioProcessor &p)
-    : audioProcessor(p) { // Removed presetBrowser init
-  // Sidebar removed
-
+PlayTab::PlayTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   // ADSR Section
-  setupKnob(attackSlider, "A", attackAttachment, "attack");
-  setupKnob(decaySlider, "D", decayAttachment, "decay");
-  setupKnob(sustainSlider, "S", sustainAttachment, "sustain");
-  setupKnob(releaseSlider, "R", releaseAttachment, "release");
+  setupKnob(attackSlider, "Attack", attackAttachment, "attack");
+  setupKnob(decaySlider, "Decay", decayAttachment, "decay");
+  setupKnob(sustainSlider, "Sustain", sustainAttachment, "sustain");
+  setupKnob(releaseSlider, "Release", releaseAttachment, "release");
+
+  // Init ADSR Labels
+  auto initLabel = [this](juce::Label &l, const juce::String &text) {
+    addAndMakeVisible(l);
+    l.setText(text, juce::dontSendNotification);
+    l.setFont(12.0f);
+    l.setJustificationType(juce::Justification::centred);
+    l.setColour(juce::Label::textColourId, WolfColors::TEXT_SECONDARY);
+  };
+
+  initLabel(attackLabel, "A");
+  initLabel(decayLabel, "D");
+  initLabel(sustainLabel, "S");
+  initLabel(releaseLabel, "R");
 
   addAndMakeVisible(adsrLabel);
   adsrLabel.setText("ENVELOPE", juce::dontSendNotification);
@@ -16,23 +27,37 @@ PlayTab::PlayTab(HowlingWolvesAudioProcessor &p)
   adsrLabel.setColour(juce::Label::textColourId, WolfColors::ACCENT_CYAN);
 
   // Sample Section
-  startSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-  startSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-  // No params attached yet for sample start/end, just visuals for Phase 2
-  addAndMakeVisible(startSlider);
-  addAndMakeVisible(endSlider);
-  endSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-  endSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+  // Use setupSlider to connect params
+  setupSlider(startSlider, "Start", startAttachment, "sampleStart");
+  setupSlider(endSlider, "End", endAttachment, "sampleEnd");
+
+  initLabel(startLabel, "Start");
+  initLabel(endLabel, "End");
+  startLabel.setJustificationType(juce::Justification::centredRight);
+  endLabel.setJustificationType(juce::Justification::centredRight);
 
   addAndMakeVisible(loopToggle);
   loopToggle.setButtonText("Loop");
+  if (audioProcessor.getAPVTS().getParameter("sampleLoop") != nullptr) {
+    loopAttachment =
+        std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+            audioProcessor.getAPVTS(), "sampleLoop", loopToggle);
+  }
 
   addAndMakeVisible(sampleLabel);
   sampleLabel.setText("SAMPLE", juce::dontSendNotification);
   sampleLabel.setFont(juce::Font(14.0f, juce::Font::bold));
   sampleLabel.setColour(juce::Label::textColourId, WolfColors::ACCENT_CYAN);
 
-  // Output Section
+  // --- Output Section ---
+  initLabel(gainLabel, "Gain");
+  initLabel(panLabel, "Pan");
+  initLabel(tuneLabel, "Tune");
+  // Right align labels for linear sliders
+  gainLabel.setJustificationType(juce::Justification::centredRight);
+  panLabel.setJustificationType(juce::Justification::centredRight);
+  tuneLabel.setJustificationType(juce::Justification::centredRight);
+
   setupSlider(gainSlider, "Gain", gainAttachment, "gain");
   setupSlider(panSlider, "Pan", panAttachment, "pan");
   setupSlider(tuneSlider, "Tune", tuneAttachment, "tune");
@@ -54,7 +79,6 @@ void PlayTab::setupKnob(
   slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
   addAndMakeVisible(slider);
 
-  // Try to attach if parameter exists
   if (audioProcessor.getAPVTS().getParameter(paramId) != nullptr) {
     attachment =
         std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -68,7 +92,7 @@ void PlayTab::setupSlider(
         &attachment,
     const juce::String &paramId) {
   slider.setSliderStyle(juce::Slider::LinearHorizontal);
-  slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 20);
+  slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
   addAndMakeVisible(slider);
 
   if (audioProcessor.getAPVTS().getParameter(paramId) != nullptr) {
@@ -79,80 +103,92 @@ void PlayTab::setupSlider(
 }
 
 void PlayTab::paint(juce::Graphics &g) {
-  // Main area background (semi-transparent panel over cave)
   auto mainArea = getLocalBounds().removeFromRight(getWidth() - 200);
 
-  // Draw semi-transparent panel for Sound Engine
   g.setColour(WolfColors::PANEL_DARK);
   g.fillRoundedRectangle(mainArea.toFloat().reduced(10), 4.0f);
 
   g.setColour(WolfColors::BORDER_SUBTLE);
   g.drawRoundedRectangle(mainArea.toFloat().reduced(10), 4.0f, 1.0f);
-
-  // Draw Section Dividers/Headers?
-  // Handled by resized() placement mostly
 }
 
+// Manual layout for reliability
 void PlayTab::resized() {
   auto area = getLocalBounds();
-
-  // Sidebar removed (but we keep the spacing so knobs stay in place)
   area.removeFromLeft(200);
+  area.reduce(25, 25);
 
-  // Main Content
-  area.reduce(25, 25); // Padding inside the panel
+  // 1. ADSR Section
+  {
+    auto adsrSection = area.removeFromTop(105);
+    adsrLabel.setBounds(adsrSection.removeFromTop(20));
 
-  juce::FlexBox mainLayout;
-  mainLayout.flexDirection = juce::FlexBox::Direction::column;
-  mainLayout.justifyContent = juce::FlexBox::JustifyContent::flexStart;
-  mainLayout.alignContent = juce::FlexBox::AlignContent::stretch;
+    adsrSection.removeFromTop(5); // Spacing
 
-  // ADSR Section
-  juce::FlexBox adsrBox;
-  adsrBox.flexDirection = juce::FlexBox::Direction::row;
-  adsrBox.justifyContent = juce::FlexBox::JustifyContent::flexStart;
-  adsrBox.items.add(juce::FlexItem(attackSlider)
-                        .withWidth(60)
-                        .withHeight(60)
-                        .withMargin({0, 10, 0, 0}));
-  adsrBox.items.add(juce::FlexItem(decaySlider)
-                        .withWidth(60)
-                        .withHeight(60)
-                        .withMargin({0, 10, 0, 0}));
-  adsrBox.items.add(juce::FlexItem(sustainSlider)
-                        .withWidth(60)
-                        .withHeight(60)
-                        .withMargin({0, 10, 0, 0}));
-  adsrBox.items.add(juce::FlexItem(releaseSlider).withWidth(60).withHeight(60));
+    auto knobArea = adsrSection;
+    int knobW = 60;
+    int spacing = 10;
 
-  mainLayout.items.add(juce::FlexItem(adsrLabel).withHeight(20));
-  mainLayout.items.add(
-      juce::FlexItem(adsrBox).withHeight(70).withMargin({0, 0, 20, 0}));
+    auto layoutAdsrKnob = [&](juce::Slider &s, juce::Label &l) {
+      auto slice = knobArea.removeFromLeft(knobW);
+      knobArea.removeFromLeft(spacing);
 
-  // Sample Section
-  mainLayout.items.add(juce::FlexItem(sampleLabel).withHeight(20));
-  mainLayout.items.add(juce::FlexItem(startSlider)
-                           .withHeight(20)
-                           .withFlex(1)
-                           .withMargin({0, 0, 5, 0}));
-  mainLayout.items.add(
-      juce::FlexItem(endSlider).withHeight(20).withFlex(1).withMargin(
-          {0, 0, 5, 0}));
-  mainLayout.items.add(juce::FlexItem(loopToggle)
-                           .withHeight(20)
-                           .withWidth(60)
-                           .withMargin({0, 0, 20, 0}));
+      l.setBounds(slice.removeFromBottom(15));
+      s.setBounds(slice);
+    };
 
-  // Output Section
-  mainLayout.items.add(juce::FlexItem(outputLabel).withHeight(20));
-  mainLayout.items.add(juce::FlexItem(gainSlider)
-                           .withHeight(24)
-                           .withFlex(1)
-                           .withMargin({0, 0, 5, 0}));
-  mainLayout.items.add(
-      juce::FlexItem(panSlider).withHeight(24).withFlex(1).withMargin(
-          {0, 0, 5, 0}));
-  mainLayout.items.add(juce::FlexItem(tuneSlider).withHeight(24).withFlex(1));
+    layoutAdsrKnob(attackSlider, attackLabel);
+    layoutAdsrKnob(decaySlider, decayLabel);
+    layoutAdsrKnob(sustainSlider, sustainLabel);
+    layoutAdsrKnob(releaseSlider, releaseLabel);
+  }
 
-  mainLayout.performLayout(area);
+  area.removeFromTop(15); // Gap
+
+  // 2. Sample Section
+  {
+    auto sampleSection = area.removeFromTop(100);
+    sampleLabel.setBounds(sampleSection.removeFromTop(20));
+    sampleSection.removeFromTop(5);
+
+    // Start Row
+    auto startRow = sampleSection.removeFromTop(24);
+    startLabel.setBounds(startRow.removeFromLeft(50));
+    startRow.removeFromLeft(5);
+    startSlider.setBounds(startRow);
+
+    sampleSection.removeFromTop(5);
+
+    // End Row
+    auto endRow = sampleSection.removeFromTop(24);
+    endLabel.setBounds(endRow.removeFromLeft(50));
+    endRow.removeFromLeft(5);
+    endSlider.setBounds(endRow);
+
+    sampleSection.removeFromTop(5);
+
+    // Loop
+    loopToggle.setBounds(sampleSection.removeFromTop(20).removeFromLeft(60));
+  }
+
+  area.removeFromTop(15);
+
+  // 3. Output Section
+  {
+    auto outputSection = area.removeFromTop(130);
+    outputLabel.setBounds(outputSection.removeFromTop(20));
+    outputSection.removeFromTop(5);
+
+    auto layoutOutputRow = [&](juce::Slider &s, juce::Label &l) {
+      auto row = outputSection.removeFromTop(24);
+      l.setBounds(row.removeFromLeft(50));
+      row.removeFromLeft(5);
+      s.setBounds(row);
+      outputSection.removeFromTop(5);
+    };
+
+    layoutOutputRow(gainSlider, gainLabel);
+    layoutOutputRow(panSlider, panLabel);
+    layoutOutputRow(tuneSlider, tuneLabel);
+  }
 }
