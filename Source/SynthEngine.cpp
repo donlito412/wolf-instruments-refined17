@@ -27,6 +27,11 @@ void HowlingVoice::prepare(double sampleRate, int samplesPerBlock) {
 
   adsr.setSampleRate(sampleRate);
 
+  // Prepare crossover filter for Bass (120Hz)
+  crossoverFilter.prepare(spec);
+  crossoverFilter.setType(juce::dsp::LinkwitzRileyFilterType::lowpass);
+  crossoverFilter.setCutoffFrequency(120.0f);
+
   // Resize temp buffer for processing
   tempBuffer.setSize(1, samplesPerBlock); // Mono voice
 }
@@ -80,7 +85,6 @@ void HowlingVoice::updateSampleParams(float tune, float sampleStart,
   tuneSemitones = tune;
   sampleStartPercent = sampleStart;
   sampleEndPercent = sampleEnd;
-  sampleEndPercent = sampleEnd;
   isLooping = loop;
 }
 
@@ -89,33 +93,20 @@ void HowlingVoice::setPan(float newPan) { pan = newPan; }
 void HowlingVoice::startNote(int midiNoteNumber, float velocity,
                              juce::SynthesiserSound *sound,
                              int currentPitchWheelPosition) {
+  // Check if it's Bass or One-Shot
+  isCurrentSoundBass = false;
+  isCurrentSoundOneShot = false;
+
+  if (auto *hs = dynamic_cast<HowlingSound *>(sound)) {
+    isCurrentSoundBass = hs->isBassSample();
+    isCurrentSoundOneShot = hs->isOneShotSample();
+  }
+
   // 1. Base startNote
   juce::SamplerVoice::startNote(midiNoteNumber, velocity, sound,
                                 currentPitchWheelPosition);
 
-  // 2. Tune (Pitch Shift)
-  // DISABLED: Requires private pitchRatio access
-  /*
-  if (tuneSemitones != 0.0f) {
-    // Pitch ratio modification
-    double tuneRatio = std::pow(2.0, tuneSemitones / 12.0);
-    pitchRatio *= tuneRatio;
-  }
-  */
-
-  // 3. Sample Start Offset
-  // DISABLED: Requires private sourceSamplePosition access
-  /*
-  if (auto *samplerSound = dynamic_cast<juce::SamplerSound *>(sound)) {
-    if (auto *audioData = samplerSound->getAudioData()) {
-      int64 length = audioData->getNumSamples();
-      int64 startPos = static_cast<int64>(length * sampleStartPercent);
-
-      // sourceSamplePosition is protected in Juce::SamplerVoice
-      sourceSamplePosition = static_cast<double>(startPos);
-    }
-  }
-  */
+  crossoverFilter.reset();
 
   adsr.noteOn();
   filter.reset();
@@ -123,6 +114,12 @@ void HowlingVoice::startNote(int midiNoteNumber, float velocity,
 }
 
 void HowlingVoice::stopNote(float velocity, bool allowTailOff) {
+  // If One-Shot, IGNORE stopNote (let sample play to end)
+  // SamplerVoice naturally stops when sample data runs out (if not looping).
+  if (isCurrentSoundOneShot) {
+    return;
+  }
+
   if (allowTailOff) {
     adsr.noteOff();
     juce::SamplerVoice::stopNote(velocity, true);
@@ -142,35 +139,15 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
   }
   tempBuffer.clear();
 
-  // 1. Check Sample End Truncation
-  // DISABLED: Requires private sourceSamplePosition access
-  /*
-  if (auto *sound = dynamic_cast<juce::SamplerSound *>(
-          getCurrentlyPlayingSound().get())) {
-    if (auto *audioData = sound->getAudioData()) {
-      int64 length = audioData->getNumSamples();
-      int64 endPos = static_cast<int64>(length * sampleEndPercent);
-
-      // If we passed the end point (and valid end point), stop.
-      // Ignore if looping (standard sampler handles loop points usually defined
-      // in file, but we can try to force stop if we want custom region loop -
-      // Phase 2). For now, if not looping, stop at End slider.
-      if (sourceSamplePosition >= endPos && !isLooping) {
-        stopNote(0.0f, false);
-        return;
-      }
-    }
-  }
-  */
-
-  // 2. Render
+  // 1. Render Raw Sample
   juce::SamplerVoice::renderNextBlock(tempBuffer, 0, numSamples);
 
-  // 3. ADSR
+  // 2. ADSR
   adsr.applyEnvelopeToBuffer(tempBuffer, 0, numSamples);
 
   auto *bufferData = tempBuffer.getWritePointer(0);
 
+  // 3. Filter Processing
   for (int i = 0; i < numSamples; ++i) {
     float lfoValue = lfo.processSample(0.0f);
 
@@ -193,7 +170,7 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
     // Safety Check for NaN/Infinity
     if (std::isnan(filtered) || std::isinf(filtered)) {
       filtered = 0.0f;
-      filter.reset(); // Reset state to recover from explosion
+      filter.reset();
     }
 
     bufferData[i] = filtered;
@@ -204,18 +181,88 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
     return;
   }
 
-  for (int ch = 0; ch < outputBuffer.getNumChannels(); ++ch) {
-    // Simple Constant Power Panning
-    float gain = 1.0f;
-    if (outputBuffer.getNumChannels() == 2) {
-      float panRad = (pan + 1.0f) * juce::MathConstants<float>::pi * 0.25f;
-      if (ch == 0)
-        gain = std::cos(panRad);
-      if (ch == 1)
-        gain = std::sin(panRad);
-    }
+  // FORCE STOP if One-Shot and Sample has finished playing
+  // SamplerVoice::isVoiceActive() returns false when sample finishes (if not
+  // looping)
+  if (isCurrentSoundOneShot && !juce::SamplerVoice::isVoiceActive()) {
+    clearCurrentNote();
+    return;
+  }
 
-    outputBuffer.addFrom(ch, startSample, tempBuffer, 0, 0, numSamples, gain);
+  // 4. Panning and Output Mix
+  if (isCurrentSoundBass) {
+    // Bass Logic: Lows (<120Hz) -> Mono, Highs -> Panned
+
+    // We can't easily do per-sample crossover efficiently here without
+    // block processing or another temp buffer, but LinkwitzRiley is per-sample
+    // capable. However, L-R is usually 2 channels (stereo). Here we have mono
+    // voice signal `tempBuffer`. We want to split it: Lows, Highs.
+
+    // Process the whole block through a filter to get Lows?
+    // But filters are stateful.
+
+    // Let's use two filters? Or process tempBuffer in place for Lows,
+    // and subtract from original to get Highs?
+    // (Linkwitz-Riley sums flat).
+
+    // Create a copy for Highs
+    juce::AudioBuffer<float> highBuffer;
+    highBuffer.makeCopyOf(tempBuffer);
+
+    // Process tempBuffer (Lows)
+    juce::dsp::AudioBlock<float> block(tempBuffer);
+    // Since we only have 1 channel in tempBuffer
+    juce::dsp::ProcessContextReplacing<float> context(block);
+    crossoverFilter.process(context);
+
+    // Now tempBuffer contains Lows.
+    // Highs = Original (highBuffer) - Lows (tempBuffer)
+    highBuffer.addFrom(0, 0, tempBuffer.getReadPointer(0), numSamples,
+                       -1.0f); // Subtract
+
+    // Mix to Output
+    for (int ch = 0; ch < outputBuffer.getNumChannels(); ++ch) {
+      // Pan Highs
+      float panGain = 1.0f;
+      if (outputBuffer.getNumChannels() == 2) {
+        float panRad = (pan + 1.0f) * juce::MathConstants<float>::pi * 0.25f;
+        if (ch == 0)
+          panGain = std::cos(panRad);
+        if (ch == 1)
+          panGain = std::sin(panRad);
+      }
+
+      // Mono Lows (Center panned -> equal gain 0.707 or 1.0 depending on law,
+      // let's use 1.0 for kick/sub power)
+      float bassGain = 1.0f;
+      // Actually standard constant power center is 0.707, but for sub we often
+      // want full power. Let's stick to standard pan center gain approx 0.707
+      // if we want consistency with other sounds. But typically "Mono" means
+      // equal in both.
+      bassGain = (outputBuffer.getNumChannels() == 2) ? 0.707f : 1.0f;
+
+      // Add Lows (Center)
+      outputBuffer.addFrom(ch, startSample, tempBuffer, 0, 0, numSamples,
+                           bassGain);
+
+      // Add Highs (Panned)
+      outputBuffer.addFrom(ch, startSample, highBuffer, 0, 0, numSamples,
+                           panGain);
+    }
+  } else {
+    // Standard processing
+    for (int ch = 0; ch < outputBuffer.getNumChannels(); ++ch) {
+      float gain = 1.0f;
+      if (outputBuffer.getNumChannels() == 2) {
+        float panRad = (pan + 1.0f) * juce::MathConstants<float>::pi * 0.25f;
+        if (ch == 0)
+          gain = std::cos(panRad);
+        if (ch == 1)
+          gain = std::sin(panRad);
+      }
+
+      outputBuffer.addFrom(ch, startSample, tempBuffer, 0, 0, numSamples, gain);
+    }
   }
 }
 

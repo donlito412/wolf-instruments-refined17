@@ -31,16 +31,121 @@ void SampleManager::loadSound(const juce::File &file) {
 
   if (reader != nullptr) {
     juce::BigInteger allNotes;
-    allNotes.setRange(0, 128, true);
+    int rootNote = 60; // Default C3
 
-    // Try to read root note from metadata (smpl chunk)
-    int rootNote = 60; // C3 default
-    if (reader->metadataValues.containsKey("RootNote")) {
-      rootNote = reader->metadataValues["RootNote"].getIntValue();
+    // Check parent folder name
+    juce::String folder = file.getParentDirectory().getFileName();
+    bool isLead = folder.equalsIgnoreCase("Leads");
+    bool isKey = folder.equalsIgnoreCase("Keys");
+    bool isPad = folder.equalsIgnoreCase("Pads");
+    bool isPluck = folder.equalsIgnoreCase("Plucks");
+    bool isBass = folder.equalsIgnoreCase("Bass");
+    bool isFX = folder.equalsIgnoreCase("FX");
+    bool isTexture = folder.containsIgnoreCase("Texture");
+    bool isSequence = folder.containsIgnoreCase("Sequence");
+    bool isDrum = folder.containsIgnoreCase("Drum");
+
+    bool isOneShot = false;
+
+    if (isLead || isKey || isPad) {
+      // Map Leads/Keys/Pads: MIDI 24..96 (C1..C7)
+      // setRange(startBit, numBits, value) -> start 24, num 73 (24+72=96)
+      allNotes.setRange(24, 73, true);
+
+      // Root Note: Default C3 (60)
+      if (reader->metadataValues.containsKey("RootNote")) {
+        rootNote = reader->metadataValues["RootNote"].getIntValue();
+      } else {
+        rootNote = 60;
+      }
+    } else if (isPluck) {
+      // Map Plucks: MIDI 36..96 (C2..C7)
+      // start 36, num 61 (36+60=96) -> 61 semitones
+      allNotes.setRange(36, 61, true);
+
+      // Root Note: Default C4 (72)
+      if (reader->metadataValues.containsKey("RootNote")) {
+        rootNote = reader->metadataValues["RootNote"].getIntValue();
+      } else {
+        rootNote = 72;
+      }
+
+      // Force Looping OFF: Remove loop points from metadata
+      reader->metadataValues.remove("NumSampleLoops");
+      reader->metadataValues.remove("Loop0Start");
+      reader->metadataValues.remove("Loop0End");
+    } else if (isBass) {
+      // Map Bass: MIDI 12..48 (C0..C3)
+      // start 12, num 37 (12+36=48)
+      allNotes.setRange(12, 37, true);
+
+      // Root Note: Default C2 (36)
+      if (reader->metadataValues.containsKey("RootNote")) {
+        rootNote = reader->metadataValues["RootNote"].getIntValue();
+      } else {
+        rootNote = 36;
+      }
+    } else if (isFX) {
+      // Map FX: Single Note 72 (C4)
+      allNotes.setBit(72);
+
+      // Root Note: 72 (No transposition)
+      rootNote = 72;
+
+      // Force Looping OFF
+      reader->metadataValues.remove("NumSampleLoops");
+      reader->metadataValues.remove("Loop0Start");
+      reader->metadataValues.remove("Loop0End");
+
+      isOneShot = true;
+    } else if (isTexture) {
+      // Map Textures
+      if (reader->metadataValues.containsKey("RootNote")) {
+        // Tonal Texture: Range 24..96, Pitch ON
+        allNotes.setRange(24, 73, true);
+        rootNote = reader->metadataValues["RootNote"].getIntValue();
+        // Keep Looping (Default)
+      } else {
+        // Non-Tonal/Noise: Single Note 60
+        allNotes.setBit(60);
+        rootNote = 60;
+        // Keep Looping (Default)
+      }
+    } else if (isSequence) {
+      // Map Sequences: Single Note 60, Loop ON
+      allNotes.setBit(60);
+      rootNote = 60;
+
+      // Force Looping ON: If no loop points, loop entire file
+      if (!reader->metadataValues.containsKey("NumSampleLoops") ||
+          reader->metadataValues["NumSampleLoops"].getIntValue() == 0) {
+        reader->metadataValues.set("NumSampleLoops", "1");
+        reader->metadataValues.set("Loop0Start", "0");
+        reader->metadataValues.set("Loop0End",
+                                   juce::String(reader->lengthInSamples));
+      }
+    } else if (isDrum) {
+      // Map Drums (Individual): Single Note 60, One-Shot, Loop OFF
+      allNotes.setBit(60);
+      rootNote = 60;
+
+      reader->metadataValues.remove("NumSampleLoops");
+      reader->metadataValues.remove("Loop0Start");
+      reader->metadataValues.remove("Loop0End");
+
+      isOneShot = true;
+    } else {
+      // Standard mapping (Full Range)
+      allNotes.setRange(0, 128, true);
+
+      if (reader->metadataValues.containsKey("RootNote")) {
+        rootNote = reader->metadataValues["RootNote"].getIntValue();
+      }
     }
 
-    auto *sound = new HowlingSound(file.getFileNameWithoutExtension(), *reader,
-                                   allNotes, rootNote, 0.0, 100.0, 60.0);
+    auto *sound =
+        new HowlingSound(file.getFileNameWithoutExtension(), *reader, allNotes,
+                         rootNote, 0.0, 100.0, 60.0, isBass, isOneShot);
 
     synthEngine.addSound(sound);
   } else {
@@ -74,10 +179,16 @@ void SampleManager::loadDrumKit(const juce::File &kitDirectory) {
       juce::BigInteger noteMap;
       noteMap.setBit(midiNote);
 
+      // Force Looping OFF
+      reader->metadataValues.remove("NumSampleLoops");
+      reader->metadataValues.remove("Loop0Start");
+      reader->metadataValues.remove("Loop0End");
+
       auto *sound =
           new HowlingSound(file.getFileNameWithoutExtension(), *reader, noteMap,
-                           midiNote,        // Root note = played note
-                           0.0, 0.1, 60.0); // Fast attack
+                           midiNote,       // Root note = played note
+                           0.0, 0.1, 60.0, // Fast attack
+                           false, true);   // isBass=false, isOneShot=true
 
       synthEngine.addSound(sound);
       midiNote++;

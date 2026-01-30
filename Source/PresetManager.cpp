@@ -28,15 +28,8 @@ PresetManager::PresetManager(juce::AudioProcessorValueTreeState &apvts,
     }
   }
 
-  // Ensure Category Subfolders exist (in User directory)
-  juce::StringArray categories = {"Bass", "Leads",    "Pads",
-                                  "Keys", "Plucks",   "Drums",
-                                  "FX",   "Textures", "Sequence"};
-  for (const auto &cat : categories) {
-    auto catDir = defaultDirectory.getChildFile(cat);
-    if (!catDir.exists())
-      catDir.createDirectory();
-  }
+  // We no longer enforce category subfolders.
+  // User can organize files as they wish.
 }
 
 void PresetManager::savePreset(const juce::String &presetName,

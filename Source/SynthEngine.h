@@ -13,10 +13,19 @@ public:
   HowlingSound(const juce::String &name, juce::AudioFormatReader &source,
                const juce::BigInteger &midiNotes, int midiNoteForNormalPitch,
                double attackTimeSecs, double releaseTimeSecs,
-               double maxSampleLengthSeconds)
+               double maxSampleLengthSeconds, bool isBassSound = false,
+               bool isOneShotSound = false)
       : juce::SamplerSound(name, source, midiNotes, midiNoteForNormalPitch,
                            attackTimeSecs, releaseTimeSecs,
-                           maxSampleLengthSeconds) {}
+                           maxSampleLengthSeconds),
+        isBass(isBassSound), isOneShot(isOneShotSound) {}
+
+  bool isBassSample() const { return isBass; }
+  bool isOneShotSample() const { return isOneShot; }
+
+private:
+  bool isBass;
+  bool isOneShot;
 };
 
 //==============================================================================
@@ -71,6 +80,13 @@ private:
   float sampleStartPercent = 0.0f;
   float sampleEndPercent = 1.0f;
   bool isLooping = true;
+
+  // Bass processing
+  bool isCurrentSoundBass = false;
+  juce::dsp::LinkwitzRileyFilter<float> crossoverFilter; // For splitting Bass
+
+  // One-Shot processing
+  bool isCurrentSoundOneShot = false;
 
   // Base parameters for modulation
   float baseCutoff = 20000.0f;
