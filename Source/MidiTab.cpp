@@ -59,6 +59,9 @@ MidiTab::MidiTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   typeAtt =
       std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
           audioProcessor.getAPVTS(), "chordMode", typeCombo);
+
+  // --- Capture Section ---
+  addAndMakeVisible(midiDrag);
 }
 
 MidiTab::~MidiTab() {}
@@ -125,4 +128,9 @@ void MidiTab::resized() {
   auto cRow = rightCol.removeFromTop(60);
   typeLabel.setBounds(cRow.removeFromTop(20));
   typeCombo.setBounds(cRow.reduced(5));
+
+  rightCol.removeFromTop(20);
+
+  // Drag Component at the bottom of right column
+  midiDrag.setBounds(rightCol.removeFromTop(40).reduced(0, 5));
 }

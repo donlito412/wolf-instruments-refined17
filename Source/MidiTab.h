@@ -1,5 +1,6 @@
 #pragma once
 
+#include "MidiDragComponent.h"
 #include "PluginProcessor.h"
 #include <JuceHeader.h>
 
@@ -34,6 +35,9 @@ private:
   juce::Label chordLabel{"Chord Settings", "CHORD ENGINE"};
   juce::Label typeLabel{"Type", "Chord Type"};
   juce::ComboBox typeCombo;
+
+  // MIDI Capture
+  MidiDragComponent midiDrag{audioProcessor};
 
   // Attachments
   std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>

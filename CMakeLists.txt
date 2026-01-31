@@ -60,6 +60,10 @@ target_sources(HowlingWolves
         Source/MidiProcessor.h
         Source/MidiTab.cpp
         Source/MidiTab.h
+        Source/MidiCapturer.cpp
+        Source/MidiCapturer.h
+        Source/MidiDragComponent.cpp
+        Source/MidiDragComponent.h
         Source/DrumTab.cpp
         Source/DrumTab.h
         Source/SettingsTab.cpp

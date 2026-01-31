@@ -19,13 +19,15 @@
 // SettingsTab class definition removed (now in SettingsTab.h)
 
 //==============================================================================
-class HowlingWolvesAudioProcessorEditor : public juce::AudioProcessorEditor {
+class HowlingWolvesAudioProcessorEditor : public juce::AudioProcessorEditor,
+                                          public juce::Timer {
 public:
   HowlingWolvesAudioProcessorEditor(HowlingWolvesAudioProcessor &);
   ~HowlingWolvesAudioProcessorEditor() override;
 
   void paint(juce::Graphics &) override;
   void resized() override;
+  void timerCallback() override;
 
 private:
   HowlingWolvesAudioProcessor &audioProcessor;

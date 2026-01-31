@@ -4,6 +4,7 @@
 #include "FilterProcessor.h"
 #include "HuntEngine.h"
 #include "LFOProcessor.h"
+#include "MidiCapturer.h"
 #include "MidiProcessor.h"
 #include "PresetManager.h"
 #include "SampleManager.h"
@@ -55,6 +56,7 @@ public:
   juce::MidiKeyboardState &getKeyboardState() { return keyboardState; }
   PresetManager &getPresetManager() { return presetManager; }
   HuntEngine &getHuntEngine() { return huntEngine; }
+  MidiCapturer &getMidiCapturer() { return midiCapturer; }
 
   // Visualizer FIFO
   // Ideally, PluginProcessor polls this, but we need to push to it.
@@ -91,6 +93,7 @@ private:
   EffectsProcessor effectsProcessor;
   MidiProcessor midiProcessor;
   HuntEngine huntEngine;
+  MidiCapturer midiCapturer;
 
   //==============================================================================
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HowlingWolvesAudioProcessor)

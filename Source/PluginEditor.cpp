@@ -126,11 +126,16 @@ HowlingWolvesAudioProcessorEditor::HowlingWolvesAudioProcessorEditor(
   };
 
   // Force initial layout and paint to prevent stall
+  // Force initial layout and paint to prevent stall
   resized();
   repaint();
+
+  // Start UI refresh timer
+  startTimerHz(30);
 }
 
 HowlingWolvesAudioProcessorEditor::~HowlingWolvesAudioProcessorEditor() {
+  stopTimer();
   setLookAndFeel(nullptr);
   tabs.setLookAndFeel(nullptr);
 }
@@ -141,11 +146,13 @@ void HowlingWolvesAudioProcessorEditor::paint(juce::Graphics &g) {
   g.drawImage(backgroundImage, getLocalBounds().toFloat(),
               juce::RectanglePlacement::fillDestination);
 
-  // Draw Logo (Top Left)
-  if (logoImage.isValid()) {
-    g.drawImage(logoImage, 10, 10, 200, 50, 0, 0, logoImage.getWidth(),
-                logoImage.getHeight());
-  }
+  // Logo removed per user request
+  // if (logoImage.isValid()) { ... }
+}
+
+void HowlingWolvesAudioProcessorEditor::timerCallback() {
+  // Refresh UI components that might need it (e.g. Visualizers)
+  repaint();
 }
 
 void HowlingWolvesAudioProcessorEditor::resized() {

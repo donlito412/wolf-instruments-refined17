@@ -70,6 +70,7 @@ void HowlingWolvesAudioProcessor::prepareToPlay(double sampleRate,
   synthEngine.setCurrentPlaybackSampleRate(sampleRate);
   synthEngine.prepare(sampleRate, samplesPerBlock);
   midiProcessor.prepare(sampleRate);
+  midiCapturer.prepare(sampleRate);
 
   juce::dsp::ProcessSpec spec;
   spec.sampleRate = sampleRate;
@@ -189,6 +190,9 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   if (chordMode) {
     midiProcessor.getChordEngine().setParameters((int)chordMode->load(), 0);
   }
+
+  // --- MIDI Capture (After processing, before Synth) ---
+  midiCapturer.processMidi(midiMessages, buffer.getNumSamples());
 
   // --- Sample & Tune Parameters ---
   auto *tuneParam = apvts.getRawParameterValue("tune");
