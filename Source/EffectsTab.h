@@ -55,6 +55,8 @@ private:
 
   // Labels
   juce::Label delayTitle, reverbTitle, biteTitle, eqTitle;
+  juce::Label dTimeLabel, dFdbkLabel, dWidthLabel, dMixLabel;
+  juce::Label rSizeLabel, rDecayLabel, rDampLabel, rMixLabel;
 
   // Attachments
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>

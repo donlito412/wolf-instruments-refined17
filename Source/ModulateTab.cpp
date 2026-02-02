@@ -9,6 +9,7 @@ ModulateTab::ModulateTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   setupLabel(lfoTitle, "LFO PARAMETERS");
 
   addAndMakeVisible(waveSelector);
+  setupLabel(waveLabel, "WAVE SHAPE");
   waveSelector.addItemList(
       {"SINE", "SQUARE", "TRIANGLE"},
       1); // Matching Processor choices order usually: Sine, Square, Triangle
@@ -27,16 +28,21 @@ ModulateTab::ModulateTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
     waveSelector.setSelectedId(1);
 
   setupKnob(rateKnob, "RATE", "lfoRate", rateAtt);
+  setupLabel(rateLabel, "RATE");
   setupKnob(depthKnob, "DEPTH", "lfoDepth", depthAtt);
+  setupLabel(depthLabel, "DEPTH");
 
   // Phase and Smooth don't exist in processor yet, just Visuals
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> nullAtt;
   setupKnob(phaseKnob, "PHASE", "", nullAtt);
+  setupLabel(phaseLabel, "PHASE");
   setupSlider(smoothSlider, "SMOOTH", true, "", nullAtt);
+  setupLabel(smoothLabel, "SMOOTH");
 
   // --- 3. MODULATION ROUTING (RIGHT PANEL) ---
   setupLabel(routingTitle, "MODULATION ROUTING");
   addAndMakeVisible(targetSelector);
+  setupLabel(targetLabel, "TARGET");
   targetSelector.addItemList({"FILTER CUTOFF", "VOLUME", "PAN", "PITCH"},
                              1); // Matching Processor Choices
 
@@ -47,10 +53,20 @@ ModulateTab::ModulateTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   else
     targetSelector.setSelectedId(1);
 
-  for (auto *s : {&modA, &modD, &modS, &modR}) {
-    // Visual dummies for LFO Envelope? Or Mod Envelope?
-    setupSlider(*s, "Env", false, "", nullAtt);
-  }
+  // ADSR Knobs
+  setupKnob(modA, "A", "", nullAtt);
+  setupLabel(modALabel, "A");
+  modALabel.setFont(juce::Font(10.0f, juce::Font::bold));
+  setupKnob(modD, "D", "", nullAtt);
+  setupLabel(modDLabel, "D");
+  modDLabel.setFont(juce::Font(10.0f, juce::Font::bold));
+  setupKnob(modS, "S", "", nullAtt);
+  setupLabel(modSLabel, "S");
+  modSLabel.setFont(juce::Font(10.0f, juce::Font::bold));
+  setupKnob(modR, "R", "", nullAtt);
+  setupLabel(modRLabel, "R");
+  modRLabel.setFont(juce::Font(10.0f, juce::Font::bold));
+
   setupSlider(amountSlider, "MOD AMOUNT", true, "", nullAtt);
 
   startTimerHz(60);
@@ -153,34 +169,62 @@ void ModulateTab::resized() {
 
   // --- LFO PARAMETERS LAYOUT ---
   auto lArea = lfoPanel.reduced(15);
-  lfoTitle.setBounds(lArea.removeFromTop(30));
-  waveSelector.setBounds(lArea.removeFromTop(35).reduced(20, 0));
+  lfoTitle.setBounds(lArea.removeFromTop(25));
+
+  // Wave Selector & Label
+  auto waveRow = lArea.removeFromTop(45);
+  waveLabel.setBounds(waveRow.removeFromTop(15));
+  waveSelector.setBounds(waveRow.reduced(20, 0));
 
   // Center Knobs row
-  auto knobRow = lArea.removeFromTop(100);
+  auto knobRow = lArea.removeFromTop(90);
   int kw = knobRow.getWidth() / 3;
-  rateKnob.setBounds(knobRow.removeFromLeft(kw).withSizeKeepingCentre(60, 60));
-  depthKnob.setBounds(knobRow.removeFromLeft(kw).withSizeKeepingCentre(60, 60));
-  phaseKnob.setBounds(knobRow.withSizeKeepingCentre(60, 60));
 
-  smoothSlider.setBounds(lArea.removeFromBottom(40).reduced(20, 0));
+  auto k1 = knobRow.removeFromLeft(kw);
+  rateKnob.setBounds(k1.withSizeKeepingCentre(60, 60).translated(0, -10));
+  rateLabel.setBounds(k1.getX(), rateKnob.getBottom(), k1.getWidth(), 15);
+
+  auto k2 = knobRow.removeFromLeft(kw);
+  depthKnob.setBounds(k2.withSizeKeepingCentre(60, 60).translated(0, -10));
+  depthLabel.setBounds(k2.getX(), depthKnob.getBottom(), k2.getWidth(), 15);
+
+  auto k3 = knobRow;
+  phaseKnob.setBounds(k3.withSizeKeepingCentre(60, 60).translated(0, -10));
+  phaseLabel.setBounds(k3.getX(), phaseKnob.getBottom(), k3.getWidth(), 15);
+
+  // Smooth Slider
+  auto smoothRow = lArea.removeFromBottom(40);
+  smoothLabel.setBounds(smoothRow.removeFromTop(15));
+  smoothSlider.setBounds(smoothRow.reduced(20, 0));
 
   // --- ROUTING LAYOUT ---
   auto rArea = routingPanel.reduced(15);
-  routingTitle.setBounds(rArea.removeFromTop(30));
-  targetSelector.setBounds(rArea.removeFromTop(35).reduced(20, 0));
+  routingTitle.setBounds(rArea.removeFromTop(25));
 
-  amountSlider.setBounds(rArea.removeFromBottom(40).reduced(20, 0));
+  // Target Selector
+  auto targetRow = rArea.removeFromTop(45);
+  targetLabel.setBounds(targetRow.removeFromTop(15));
+  targetSelector.setBounds(targetRow.reduced(20, 0));
 
-  auto adsrArea = rArea.reduced(30, 10);
-  float w = (float)adsrArea.getWidth() / 4.0f;
+  // Amount Slider
+  auto amtRow = rArea.removeFromBottom(40);
+  amountSlider.setBounds(amtRow.reduced(20, 0));
 
-  auto placeSlider = [&](juce::Slider &s) {
-    s.setBounds(adsrArea.removeFromLeft((int)w).reduced(5, 0));
+  // ADSR Knobs Layout
+  auto adsrArea = rArea.reduced(10, 5); // Tighter area
+  int numKnobs = 4;
+  int w = adsrArea.getWidth() / numKnobs;
+
+  auto placeKnob = [&](juce::Slider &s, juce::Label &l) {
+    auto col = adsrArea.removeFromLeft(w);
+    // Place knob centered - Moved down by 5px
+    s.setBounds(col.withSizeKeepingCentre(45, 45).translated(0, 5));
+    // Label below
+    l.setBounds(col.getX(), s.getBottom(), col.getWidth(), 15);
   };
 
-  placeSlider(modA);
-  placeSlider(modD);
-  placeSlider(modS);
-  placeSlider(modR);
+  placeKnob(modA, modALabel);
+  placeKnob(modD, modDLabel);
+  placeKnob(modS, modSLabel);
+  placeKnob(modR, modRLabel);
 }

@@ -56,6 +56,9 @@ private:
 
   // Labels
   juce::Label visTitle, syncLabel, lfoTitle, routingTitle;
+  juce::Label waveLabel, rateLabel, depthLabel, phaseLabel, smoothLabel;
+  juce::Label targetLabel, amountLabel, modALabel, modDLabel, modSLabel,
+      modRLabel;
 
   float phaseOffset = 0.0f;
 

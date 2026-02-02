@@ -11,10 +11,18 @@ EffectsTab::EffectsTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   // --- 1. DELAY SECTION ---
   setupLabel(delayTitle, "DELAY");
   setupSlider(delayTime, "delayTime", dTimeAtt);
+  setupLabel(dTimeLabel, "TIME");
+  dTimeLabel.setFont(juce::Font(10.0f, juce::Font::bold));
   setupSlider(delayFeedback, "delayFeedback", dFdbkAtt);
+  setupLabel(dFdbkLabel, "FEEDBACK");
+  dFdbkLabel.setFont(juce::Font(10.0f, juce::Font::bold));
   setupSlider(delayWidth, "delayWidth",
               dMixAtt); // Reuse Mix or leave null? Left null for safety.
+  setupLabel(dWidthLabel, "WIDTH");
+  dWidthLabel.setFont(juce::Font(10.0f, juce::Font::bold));
   setupSlider(delayMix, "delayMix", dMixAtt);
+  setupLabel(dMixLabel, "MIX");
+  dMixLabel.setFont(juce::Font(10.0f, juce::Font::bold));
 
   // --- 2. BITE SECTION ---
   setupLabel(biteTitle, "BITE");
@@ -35,9 +43,17 @@ EffectsTab::EffectsTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   // --- 3. REVERB SECTION ---
   setupLabel(reverbTitle, "REVERB");
   setupSlider(revSize, "reverbSize", rSizeAtt);
+  setupLabel(rSizeLabel, "SIZE");
+  rSizeLabel.setFont(juce::Font(10.0f, juce::Font::bold));
   setupSlider(revDecay, "reverbDecay", rSizeAtt); // Reuse Size or null.
+  setupLabel(rDecayLabel, "DECAY");
+  rDecayLabel.setFont(juce::Font(10.0f, juce::Font::bold));
   setupSlider(revDamp, "reverbDamping", rDampAtt);
+  setupLabel(rDampLabel, "DAMPING");
+  rDampLabel.setFont(juce::Font(10.0f, juce::Font::bold));
   setupSlider(revMix, "REVERB_MIX", rMixAtt);
+  setupLabel(rMixLabel, "MIX");
+  rMixLabel.setFont(juce::Font(10.0f, juce::Font::bold));
 
   startTimerHz(60);
 }
@@ -187,30 +203,31 @@ void EffectsTab::resized() {
   auto dArea = delayPanel.reduced(15);
   delayTitle.setBounds(dArea.removeFromTop(30));
 
-  // Use a helper lambda for rows
-  auto placeRow = [&](juce::Slider &s, const juce::String &name) {
-    auto r = dArea.removeFromTop(50);
-    // Draw label via paint? Or add Label component?
-    // I'll just place slider.
-    s.setBounds(r.removeFromBottom(20));
-    // Note: Name ignored as per user snippet limitation.
+  auto placeRow = [&](juce::Slider &s, juce::Label &l) {
+    auto r = dArea.removeFromTop(45);
+    l.setBounds(r.removeFromTop(15));
+    s.setBounds(r.reduced(0, 2));
   };
-  placeRow(delayTime, "TIME");
-  placeRow(delayFeedback, "FEEDBACK");
-  placeRow(delayWidth, "WIDTH");
-  placeRow(delayMix, "MIX");
+
+  placeRow(delayTime, dTimeLabel);
+  placeRow(delayFeedback, dFdbkLabel);
+  placeRow(delayWidth, dWidthLabel);
+  placeRow(delayMix, dMixLabel);
 
   // Reverb
   auto rArea = reverbPanel.reduced(15);
   reverbTitle.setBounds(rArea.removeFromTop(30));
-  auto placeRowRev = [&](juce::Slider &s) {
-    auto r = rArea.removeFromTop(50);
-    s.setBounds(r.removeFromBottom(20));
+
+  auto placeRowRev = [&](juce::Slider &s, juce::Label &l) {
+    auto r = rArea.removeFromTop(45);
+    l.setBounds(r.removeFromTop(15));
+    s.setBounds(r.reduced(0, 2));
   };
-  placeRowRev(revSize);
-  placeRowRev(revDecay);
-  placeRowRev(revDamp);
-  placeRowRev(revMix);
+
+  placeRowRev(revSize, rSizeLabel);
+  placeRowRev(revDecay, rDecayLabel);
+  placeRowRev(revDamp, rDampLabel);
+  placeRowRev(revMix, rMixLabel);
 
   // Position Center Controls
   auto bArea = bitePanel.reduced(10);
