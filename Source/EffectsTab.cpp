@@ -29,6 +29,7 @@ EffectsTab::EffectsTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   addAndMakeVisible(biteDial);
   biteDial.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
   biteDial.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+  biteDial.setMouseDragSensitivity(500); // Finer control
   // Bind to Drive
   if (auto *param = audioProcessor.getAPVTS().getParameter("distDrive"))
     biteAtt =

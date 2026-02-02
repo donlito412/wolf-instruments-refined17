@@ -25,10 +25,10 @@ PerformTab::PerformTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
 
   // --- 4. SPREAD & RANGE (BOTTOM CENTER) ---
   setupLabel(spreadTitle, "SPREAD & RANGE");
-  setupSlider(spreadWidth, "SPREAD", "arpSpread", spreadAtt);
+  setupKnob(spreadWidth, "SPREAD", "arpSpread", spreadAtt);
   setupLabel(spreadLabel, "SPREAD WIDTH");
   spreadLabel.setFont(juce::Font(10.0f, juce::Font::bold));
-  setupSlider(octaveRange, "OCTAVES", "arpOctaves", octaveAtt);
+  setupKnob(octaveRange, "OCTAVES", "arpOctaves", octaveAtt);
   setupLabel(octaveLabel, "OCTAVE RANGE");
   octaveLabel.setFont(juce::Font(10.0f, juce::Font::bold));
 
@@ -47,6 +47,8 @@ void PerformTab::setupKnob(
   addAndMakeVisible(s);
   s.setSliderStyle(juce::Slider::Rotary);
   s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+  s.setMouseDragSensitivity(
+      500); // Standard is 250, 500 = finer control/less loose
   if (auto *p = audioProcessor.getAPVTS().getParameter(paramId))
     att =
         std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -193,15 +195,15 @@ void PerformTab::layoutSpread() {
   auto a = spreadPanel.reduced(15);
   spreadTitle.setBounds(a.removeFromTop(25));
 
-  int sh = a.getHeight() / 2;
+  int w = a.getWidth() / 2;
 
-  auto top = a.removeFromTop(sh);
-  spreadLabel.setBounds(top.removeFromTop(15));
-  spreadWidth.setBounds(top.reduced(0, 5));
+  auto left = a.removeFromLeft(w);
+  spreadWidth.setBounds(left.withSizeKeepingCentre(45, 45).translated(0, -10));
+  spreadLabel.setBounds(left.getX(), spreadWidth.getBottom(), left.getWidth(),
+                        15);
 
-  auto bot = a; // remaining
-  octaveLabel.setBounds(bot.removeFromTop(15));
-  octaveRange.setBounds(bot.reduced(0, 5));
+  octaveRange.setBounds(a.withSizeKeepingCentre(45, 45).translated(0, -10));
+  octaveLabel.setBounds(a.getX(), octaveRange.getBottom(), a.getWidth(), 15);
 }
 
 void PerformTab::layoutControls() {

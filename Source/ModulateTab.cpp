@@ -86,6 +86,7 @@ void ModulateTab::setupKnob(
   addAndMakeVisible(s);
   s.setSliderStyle(juce::Slider::Rotary);
   s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+  s.setMouseDragSensitivity(500); // Higher sensitivity for more control
   if (audioProcessor.getAPVTS().getParameter(paramId))
     att =
         std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(

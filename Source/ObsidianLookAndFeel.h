@@ -22,36 +22,72 @@ public:
                         float sliderPos, const float rotaryStartAngle,
                         const float rotaryEndAngle,
                         juce::Slider &slider) override {
-    auto radius = (float)juce::jmin(width / 2, height / 2) - 4.0f;
+    auto radius = (float)juce::jmin(width / 2, height / 2);
     auto centreX = (float)x + (float)width * 0.5f;
     auto centreY = (float)y + (float)height * 0.5f;
-    auto rx = centreX - radius;
-    auto ry = centreY - radius;
-    auto rw = radius * 2.0f;
-    auto angle =
+
+    // Geometry
+    auto knobRadius = radius - 8.0f; // Smaller body to separate ticks
+
+    // 1. Draw Background Ticks (Dim) & Active Ticks (Cyan)
+    int numTicks = 24;
+    float tickLen = 3.0f;
+    float tickOuterR = radius;
+    float tickInnerR = tickOuterR - tickLen;
+
+    for (int i = 0; i < numTicks; ++i) {
+      float prop = (float)i / (float)(numTicks - 1);
+      float angle =
+          rotaryStartAngle + prop * (rotaryEndAngle - rotaryStartAngle);
+
+      // "Lit" condition: Ticks up to the current pointer are lit
+      // Using a small epsilon to ensure the tick AT the pointer is lit
+      bool isLit = (sliderPos >= (prop - 0.02f));
+
+      g.setColour(isLit ? juce::Colours::cyan
+                        : juce::Colours::grey.withAlpha(0.3f));
+
+      float thickness = isLit ? 2.0f : 1.5f;
+
+      juce::Line<float> tick(centreX + std::cos(angle) * tickInnerR,
+                             centreY + std::sin(angle) * tickInnerR,
+                             centreX + std::cos(angle) * tickOuterR,
+                             centreY + std::sin(angle) * tickOuterR);
+      g.drawLine(tick, thickness);
+    }
+
+    // 2. Draw Knob Body
+    g.setColour(juce::Colour(0xff181818)); // Very dark grey
+    g.fillEllipse(centreX - knobRadius, centreY - knobRadius, knobRadius * 2.0f,
+                  knobRadius * 2.0f);
+
+    // Body Border/Edge
+    g.setColour(juce::Colours::black);
+    g.drawEllipse(centreX - knobRadius, centreY - knobRadius, knobRadius * 2.0f,
+                  knobRadius * 2.0f, 1.5f);
+
+    // Gloss/Gradient hint (optional, keeping ample for now)
+    g.setColour(juce::Colours::white.withAlpha(0.05f));
+    g.drawEllipse(centreX - knobRadius + 2.0f, centreY - knobRadius + 2.0f,
+                  (knobRadius - 2.0f) * 2.0f, (knobRadius - 2.0f) * 2.0f, 1.0f);
+
+    // 3. Draw Pointer (Short Notch/Dot)
+    // Points exactly to the current value angle
+    auto currentAngle =
         rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
 
-    // Fill background
-    g.setColour(juce::Colour(0xff1a1a1a));
-    g.fillEllipse(rx, ry, rw, rw);
+    // Draw a shorter "notch" indicator instead of a long line
+    float notchLen = 6.0f;
+    float notchStartR = knobRadius - notchLen - 2.0f;
+    float notchEndR = knobRadius - 2.0f;
 
-    // Border
-    g.setColour(juce::Colours::black);
-    g.drawEllipse(rx, ry, rw, rw, 1.0f);
+    juce::Line<float> pointer(centreX + std::cos(currentAngle) * notchStartR,
+                              centreY + std::sin(currentAngle) * notchStartR,
+                              centreX + std::cos(currentAngle) * notchEndR,
+                              centreY + std::sin(currentAngle) * notchEndR);
 
-    juce::Path p;
-    p.addCentredArc(centreX, centreY, radius, radius, 0.0f, rotaryStartAngle,
-                    angle, true);
-
-    g.setColour(juce::Colours::cyan.withAlpha(0.8f));
-    g.strokePath(p, juce::PathStrokeType(3.0f, juce::PathStrokeType::curved,
-                                         juce::PathStrokeType::rounded));
-
-    if (slider.isEnabled()) {
-      g.setColour(juce::Colours::cyan.withAlpha(0.2f));
-      g.strokePath(p, juce::PathStrokeType(6.0f, juce::PathStrokeType::curved,
-                                           juce::PathStrokeType::rounded));
-    }
+    g.setColour(juce::Colours::cyan);
+    g.drawLine(pointer, 3.0f); // Slightly thicker for visibility
   }
 
   // NEW: Linear Slider for Effects Tab
