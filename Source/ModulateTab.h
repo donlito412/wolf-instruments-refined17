@@ -42,10 +42,23 @@ private:
   // LFO
   juce::Slider rateKnob, depthKnob, phaseKnob, smoothSlider;
   juce::ComboBox waveSelector;
-  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> rateAtt,
-      depthAtt; // phase/smooth missing in processor currently
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> rateAtt;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
+      depthAtt;
   std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>
       waveAtt;
+
+  // New Attachments
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
+      phaseAtt;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
+      smoothAtt;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> modAAtt;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> modDAtt;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> modSAtt;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> modRAtt;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
+      amountAtt;
 
   // Routing
   juce::Slider modA, modD, modS, modR, amountSlider;

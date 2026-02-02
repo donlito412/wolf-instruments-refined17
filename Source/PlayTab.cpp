@@ -50,9 +50,27 @@ PlayTab::PlayTab(HowlingWolvesAudioProcessor &p)
   setupLabel(crushLabel, "CRUSH");
   setupKnob(spaceMacro, "SPACE", "macroSpace", spaceAtt);
   setupLabel(spaceLabel, "SPACE");
+
+  // Register Listener
+  audioProcessor.getSampleManager().addChangeListener(this);
 }
 
-PlayTab::~PlayTab() {}
+PlayTab::~PlayTab() {
+  audioProcessor.getSampleManager().removeChangeListener(this);
+}
+
+void PlayTab::changeListenerCallback(juce::ChangeBroadcaster *source) {
+  if (source == &audioProcessor.getSampleManager()) {
+    auto path = audioProcessor.getSampleManager().getCurrentSamplePath();
+    if (path.isNotEmpty()) {
+      juce::File f(path);
+      if (f.existsAsFile()) {
+        thumbnail.setSource(new juce::FileInputSource(f));
+        repaint();
+      }
+    }
+  }
+}
 
 void PlayTab::setupKnob(
     juce::Slider &s, const juce::String &n, const juce::String &paramId,

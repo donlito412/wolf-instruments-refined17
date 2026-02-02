@@ -16,7 +16,10 @@ public:
   void reset();
 
   // Parameters
-  void setParameters(float rate, int mode, int octaves, float gate, bool on);
+  void setParameters(float rate, int mode, int octaves, float gate, bool on,
+                     float density, float complexity, float spread);
+  void setRhythmStep(int step, bool active);
+  bool getRhythmStep(int step) const;
 
 private:
   double currentSampleRate = 44100.0;
@@ -40,11 +43,19 @@ private:
   int numOctaves = 1;
   float gateLength = 0.5f;
 
+  float arpDensity = 1.0f;
+  float arpComplexity = 0.0f;
+  float arpSpread = 0.0f;
+
   // Helper
   void handleNoteOn(int note, int velocity);
   void handleNoteOff(int note);
   int getNextNote();
   double getSamplesPerStep(juce::AudioPlayHead *playHead);
+
+  std::array<bool, 16> rhythmPattern = {true, true, true, true, true, true,
+                                        true, true, true, true, true, true,
+                                        true, true, true, true};
 };
 
 //==============================================================================
@@ -58,10 +69,14 @@ public:
   void process(juce::MidiBuffer &midiMessages);
 
   // Parameters
-  void setParameters(int mode, int keys); // mode: 0=Off, 1=Maj, 2=Min...
+  void setParameters(int mode, int keys,
+                     bool hold); // mode: 0=Off, 1=Maj, 2=Min...
 
 private:
   int chordMode = 0;
+  bool holdEnabled = false;
+  bool shouldFlushNotes = false;
+  std::set<int> heldNotes;
   // Temporary storage for generated notes to ensure NoteOffs match
   // For v1, we transform NoteOn(C) -> NoteOn(C, E, G).
   // And NoteOff(C) -> NoteOff(C, E, G).

@@ -6,13 +6,7 @@ SampleManager::SampleManager(SynthEngine &s) : synthEngine(s) {
 
 SampleManager::~SampleManager() {}
 
-// Helper to get standard location: ~/Music/Wolf Instruments/Howling
-// Wolves/Samples
-// Helper to get standard location: ~/Music/Wolf Instruments/Howling
-// Wolves/Samples
 // Helper to get standard location with priority search
-// REMOVED per user request
-
 void SampleManager::loadSamples() {
   // Initial load can be left empty or load a default welcome sound.
   // We rely on the user selecting a preset.
@@ -23,10 +17,9 @@ void SampleManager::loadSound(const juce::File &file) {
   if (!file.existsAsFile())
     return;
 
-  currentSamplePath = file.getFullPathName();
-
   // Clear current sounds first so we don't play the old one if this load fails
   synthEngine.clearSounds();
+  currentSamplePath = file.getFullPathName();
 
   std::unique_ptr<juce::AudioFormatReader> reader(
       formatManager.createReaderFor(file));
@@ -154,13 +147,15 @@ void SampleManager::loadSound(const juce::File &file) {
   } else {
     DBG("Failed to load sample: " + file.getFullPathName());
   }
+
+  sendChangeMessage();
 }
 
 void SampleManager::loadDrumKit(const juce::File &kitDirectory) {
   if (!kitDirectory.isDirectory())
     return;
 
-  // Clear existing sounds (Kit replaces current set)
+  // Clear current sounds first so we don't play the old one if this load fails
   synthEngine.clearSounds();
 
   auto allowedExtensions = formatManager.getWildcardForAllFormats();

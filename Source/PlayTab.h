@@ -3,7 +3,7 @@
 #include "PluginProcessor.h"
 #include <JuceHeader.h>
 
-class PlayTab : public juce::Component {
+class PlayTab : public juce::Component, public juce::ChangeListener {
 public:
   // Updated constructor to match user request V2
   PlayTab(HowlingWolvesAudioProcessor &p);
@@ -11,6 +11,7 @@ public:
 
   void paint(juce::Graphics &g) override;
   void resized() override;
+  void changeListenerCallback(juce::ChangeBroadcaster *source) override;
 
 private:
   HowlingWolvesAudioProcessor &audioProcessor;

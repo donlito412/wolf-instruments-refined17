@@ -28,14 +28,16 @@ PerformTab::PerformTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   setupKnob(spreadWidth, "SPREAD", "arpSpread", spreadAtt);
   setupLabel(spreadLabel, "SPREAD WIDTH");
   spreadLabel.setFont(juce::Font(10.0f, juce::Font::bold));
-  setupKnob(octaveRange, "OCTAVES", "arpOctaves", octaveAtt);
+  setupKnob(octaveRange, "OCTAVES", "arpOctave", octaveAtt);
   setupLabel(octaveLabel, "OCTAVE RANGE");
   octaveLabel.setFont(juce::Font(10.0f, juce::Font::bold));
 
   // --- 5. ARP CONTROLS (BOTTOM RIGHT) ---
   setupLabel(controlsTitle, "ARP CONTROLS");
-  setupButton(chordHoldBtn, "CHORD HOLD", juce::Colours::cyan);
-  setupButton(arpSyncBtn, "ARP SYNC", juce::Colours::cyan);
+  setupButton(chordHoldBtn, "CHORD HOLD", "chordHold", chordHoldAtt,
+              juce::Colours::cyan);
+  setupButton(arpSyncBtn, "ARP SYNC", "arpEnabled", arpSyncAtt,
+              juce::Colours::cyan);
 }
 
 PerformTab::~PerformTab() {}
@@ -68,6 +70,7 @@ void PerformTab::setupSlider(
             audioProcessor.getAPVTS(), paramId, s);
 }
 
+// Original (Cosmetic/Transport)
 void PerformTab::setupButton(juce::TextButton &b, const juce::String &t,
                              juce::Colour c) {
   addAndMakeVisible(b);
@@ -76,6 +79,18 @@ void PerformTab::setupButton(juce::TextButton &b, const juce::String &t,
   b.setColour(juce::TextButton::buttonColourId,
               c.withAlpha(0.2f)); // Default state dim
   b.setClickingTogglesState(true);
+}
+
+// Overload (Parameter)
+void PerformTab::setupButton(
+    juce::TextButton &b, const juce::String &t, const juce::String &paramId,
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> &att,
+    juce::Colour c) {
+  setupButton(b, t, c); // Re-use cosmetic setup
+  if (auto *p = audioProcessor.getAPVTS().getParameter(paramId))
+    att =
+        std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+            audioProcessor.getAPVTS(), paramId, b);
 }
 
 void PerformTab::setupLabel(juce::Label &l, const juce::String &t) {
@@ -104,12 +119,32 @@ void PerformTab::paint(juce::Graphics &g) {
   drawArpMatrix(g, matrixArea);
 }
 
+void PerformTab::mouseDown(const juce::MouseEvent &e) {
+  // Check if click is in Grid
+  auto matrixArea = gridPanel.reduced(10);
+  matrixArea.removeFromLeft(25);
+
+  if (matrixArea.contains(e.getPosition())) {
+    int numSteps = 16;
+    float stepW = (float)matrixArea.getWidth() / (float)numSteps;
+    int step = (int)((e.getPosition().x - matrixArea.getX()) / stepW);
+
+    // Toggle Step
+    auto &arp = audioProcessor.getMidiProcessor().getArp();
+    bool current = arp.getRhythmStep(step);
+    arp.setRhythmStep(step, !current);
+    repaint();
+  }
+}
+
 void PerformTab::drawArpMatrix(juce::Graphics &g, juce::Rectangle<int> area) {
   int numSteps = 16;
   int numNotes = 8;
   float stepW = (float)area.getWidth() / (float)numSteps;
   float noteH = (float)area.getHeight() / (float)numNotes;
   juce::StringArray notes = {"C3", "B2", "A2", "G2", "F2", "E2", "D2", "C2"};
+
+  auto &arp = audioProcessor.getMidiProcessor().getArp();
 
   for (int y = 0; y < numNotes; ++y) {
     // Draw Note Labels on left
@@ -125,13 +160,29 @@ void PerformTab::drawArpMatrix(juce::Graphics &g, juce::Rectangle<int> area) {
                                  (float)area.getY() + (y * noteH), stepW, noteH)
               .reduced(4.0f);
 
-      // Mock pattern logic from snippet
-      bool active = (x % 4 == 0 && (7 - y) == (x / 4));
+      // Check Real Pattern
+      // We only visualize the rhythm on the grid for now (Column
+      // active/inactive) Since our Arp implementation is just a Rhythm Gate, we
+      // light up the WHOLE column or just the active row? User expects a
+      // matrix. But we only have 1 bool per step. Let's light up the whole
+      // column if active, to show it's a Gate step. Or just draw it as a
+      // Sequence? Let's make it look cool: Light up the 'active' cells in the
+      // rhythm line. Since it's a rhythm gate, maybe we just draw the gate
+      // status on one row? No, user sees a GRID. Let's just visualize the "Gate
+      // Status" across all rows for that step, or just make it look like a
+      // pattern. Better: Since the Arp picks notes based on keys held, we don't
+      // know the exact note pitch here. So we will just light up the column if
+      // the step is active, maybe with a gradient or distinct color.
+
+      bool active = arp.getRhythmStep(x);
 
       g.setColour(active ? juce::Colours::cyan
                          : juce::Colours::black.withAlpha(0.3f));
-      g.fillRoundedRectangle(cell, 3.0f);
-      if (!active) {
+
+      // If active, fill. If not, outline.
+      if (active)
+        g.fillRoundedRectangle(cell, 3.0f);
+      else {
         g.setColour(juce::Colours::white.withAlpha(0.05f));
         g.drawRoundedRectangle(cell, 3.0f, 1.0f);
       }

@@ -10,6 +10,7 @@ public:
 
   void paint(juce::Graphics &g) override;
   void resized() override;
+  void mouseDown(const juce::MouseEvent &e) override;
 
 private:
   HowlingWolvesAudioProcessor &audioProcessor;
@@ -32,6 +33,11 @@ private:
       std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
           &att);
   void setupButton(juce::TextButton &b, const juce::String &t, juce::Colour c);
+  void setupButton(
+      juce::TextButton &b, const juce::String &t, const juce::String &paramId,
+      std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
+          &att,
+      juce::Colour c);
   void setupLabel(juce::Label &l, const juce::String &t);
 
   // --- Panels ---
@@ -57,6 +63,8 @@ private:
   // (Placeholders for now as many ARP params might not exist in Processor yet)
   std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
       densityAtt, complexityAtt, spreadAtt, octaveAtt;
+  std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>
+      arpSyncAtt, chordHoldAtt;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PerformTab)
 };

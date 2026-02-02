@@ -22,6 +22,11 @@ public:
                         float sliderPos, const float rotaryStartAngle,
                         const float rotaryEndAngle,
                         juce::Slider &slider) override {
+    // Override angles to user preference: 7 o'clock to 5 o'clock
+    float startAngle = 2.5f; // Approx 7 o'clock
+    float endAngle =
+        2.5f + (juce::MathConstants<float>::twoPi * 0.82f); // Approx 5 o'clock
+
     auto radius = (float)juce::jmin(width / 2, height / 2);
     auto centreX = (float)x + (float)width * 0.5f;
     auto centreY = (float)y + (float)height * 0.5f;
@@ -37,8 +42,7 @@ public:
 
     for (int i = 0; i < numTicks; ++i) {
       float prop = (float)i / (float)(numTicks - 1);
-      float angle =
-          rotaryStartAngle + prop * (rotaryEndAngle - rotaryStartAngle);
+      float angle = startAngle + prop * (endAngle - startAngle);
 
       // "Lit" condition: Ticks up to the current pointer are lit
       // Using a small epsilon to ensure the tick AT the pointer is lit
@@ -73,8 +77,7 @@ public:
 
     // 3. Draw Pointer (Short Notch/Dot)
     // Points exactly to the current value angle
-    auto currentAngle =
-        rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+    auto currentAngle = startAngle + sliderPos * (endAngle - startAngle);
 
     // Draw a shorter "notch" indicator instead of a long line
     float notchLen = 6.0f;

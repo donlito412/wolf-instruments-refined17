@@ -12,6 +12,23 @@ HowlingVoice::HowlingVoice() {
   adsr.setSampleRate(44100.0); // Will be updated in prepare
   adsrParams = {0.1f, 0.1f, 1.0f, 0.1f};
   adsr.setParameters(adsrParams);
+
+  // Initialize Mod ADSR
+  modAdsr.setSampleRate(44100.0);
+  modAdsrParams = {0.1f, 0.1f, 1.0f, 0.1f};
+  modAdsr.setParameters(modAdsrParams);
+}
+
+void HowlingVoice::updateModADSR(float attack, float decay, float sustain,
+                                 float release, float amount, int target) {
+  modAdsrParams.attack = attack;
+  modAdsrParams.decay = decay;
+  modAdsrParams.sustain = sustain;
+  modAdsrParams.release = release;
+  modAdsr.setParameters(modAdsrParams);
+
+  modAmount = amount;
+  modTarget = target;
 }
 
 void HowlingVoice::prepare(double sampleRate, int samplesPerBlock) {
@@ -109,6 +126,7 @@ void HowlingVoice::startNote(int midiNoteNumber, float velocity,
   crossoverFilter.reset();
 
   adsr.noteOn();
+  modAdsr.noteOn(); // Trigger Mod Env
   filter.reset();
   lfo.reset();
 }
@@ -122,9 +140,11 @@ void HowlingVoice::stopNote(float velocity, bool allowTailOff) {
 
   if (allowTailOff) {
     adsr.noteOff();
+    modAdsr.noteOff(); // Release Mod Env
     juce::SamplerVoice::stopNote(velocity, true);
   } else {
     adsr.reset();
+    modAdsr.reset();
     juce::SamplerVoice::stopNote(velocity, false);
   }
 }
@@ -145,13 +165,33 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
   // 2. ADSR
   adsr.applyEnvelopeToBuffer(tempBuffer, 0, numSamples);
 
+  // Calculate Mod Envelope Value (per block implies stepped, per sample is
+  // better) We'll calculate per sample for Filter/Audio targets But for
+  // optimization, let's keep it simple-ish or do per-sample loop.
+
   auto *bufferData = tempBuffer.getWritePointer(0);
 
-  // 3. Filter Processing
+  // 3. Filter Processing & Mod Env Application
   for (int i = 0; i < numSamples; ++i) {
     float lfoValue = lfo.processSample(0.0f);
+    float modEnvVal = modAdsr.getNextSample(); // 0.0 to 1.0 (sustain level etc)
 
-    float modFactor = std::pow(2.0f, lfoValue * lfoDepth * 2.0f);
+    // Calculate effective LFO + Mod modulation
+    // Mod Target 0: Cutoff (Default)
+    // We mix LFO and Mod Env.
+
+    // Base cutoff modulation from LFO
+    float combinedMod = (lfoValue * lfoDepth);
+
+    // Add Mod Env if Target is Cutoff
+    if (modTarget == 0) {
+      // Mod Amount is 0.0-1.0.
+      // Let's say max amount is +/- 2 octaves or similar.
+      // Or simply scale like LFO.
+      combinedMod += (modEnvVal * modAmount);
+    }
+
+    float modFactor = std::pow(2.0f, combinedMod * 2.0f); // 2 octaves range
     float modCutoff = baseCutoff * modFactor;
     modCutoff = juce::jlimit(20.0f, 20000.0f, modCutoff);
 
@@ -159,6 +199,23 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
     filter.setResonance(baseResonance);
 
     float input = bufferData[i];
+
+    // Apply Mod Env to Vol/Pan/Pitch if selected
+    if (modTarget == 1) { // Volume
+      // Amount determines how much Env affects Vol
+      // If amount 0, no effect. If amount 1, full effect (multiply)
+      // Actually, "Amount" often means "Depth".
+      // Let's simply multiply gain.
+      // input *= (1.0f + (modEnvVal * modAmount)); // This adds gain.
+      // Or subtractive? Standard is Positive Mod adds, Negative (in bipolar)
+      // subtracts. Here modAmount is 0-1 unipolar? Let's assume bipolar range
+      // mapping or just unidirectional. User knob is 0-1. So adds volume.
+      input *= (1.0f - (modAmount * 0.5f) + (modEnvVal * modAmount));
+    }
+
+    // Pitch (Target 3) would need resampling rate update (expensive inside loop
+    // per sample without interpolator update) Pan (Target 2) handled at end.
+
     if (std::isnan(input))
       input = 0.0f;
     float filtered = filter.processSample(0, input);
@@ -309,6 +366,15 @@ void SynthEngine::updateParams(float attack, float decay, float sustain,
       voice->updateADSR(attack, decay, sustain, release);
       voice->updateFilter(cutoff, resonance, filterType);
       voice->updateLFO(lfoRate, lfoDepth);
+    }
+  }
+}
+
+void SynthEngine::updateModParams(float attack, float decay, float sustain,
+                                  float release, float amount, int target) {
+  for (int i = 0; i < getNumVoices(); ++i) {
+    if (auto *voice = dynamic_cast<HowlingVoice *>(getVoice(i))) {
+      voice->updateModADSR(attack, decay, sustain, release, amount, target);
     }
   }
 }

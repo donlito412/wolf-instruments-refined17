@@ -57,6 +57,7 @@ public:
   PresetManager &getPresetManager() { return presetManager; }
   HuntEngine &getHuntEngine() { return huntEngine; }
   MidiCapturer &getMidiCapturer() { return midiCapturer; }
+  MidiProcessor &getMidiProcessor() { return midiProcessor; }
 
   // Shared Resources for UI
   juce::AudioFormatManager formatManager;

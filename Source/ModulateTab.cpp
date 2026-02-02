@@ -32,11 +32,10 @@ ModulateTab::ModulateTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   setupKnob(depthKnob, "DEPTH", "lfoDepth", depthAtt);
   setupLabel(depthLabel, "DEPTH");
 
-  // Phase and Smooth don't exist in processor yet, just Visuals
-  std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> nullAtt;
-  setupKnob(phaseKnob, "PHASE", "", nullAtt);
+  // Phase and Smooth
+  setupKnob(phaseKnob, "PHASE", "lfoPhase", phaseAtt);
   setupLabel(phaseLabel, "PHASE");
-  setupSlider(smoothSlider, "SMOOTH", true, "", nullAtt);
+  setupSlider(smoothSlider, "SMOOTH", true, "modSmooth", smoothAtt);
   setupLabel(smoothLabel, "SMOOTH");
 
   // --- 3. MODULATION ROUTING (RIGHT PANEL) ---
@@ -54,20 +53,20 @@ ModulateTab::ModulateTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
     targetSelector.setSelectedId(1);
 
   // ADSR Knobs
-  setupKnob(modA, "A", "", nullAtt);
+  setupKnob(modA, "A", "modAttack", modAAtt);
   setupLabel(modALabel, "A");
   modALabel.setFont(juce::Font(10.0f, juce::Font::bold));
-  setupKnob(modD, "D", "", nullAtt);
+  setupKnob(modD, "D", "modDecay", modDAtt);
   setupLabel(modDLabel, "D");
   modDLabel.setFont(juce::Font(10.0f, juce::Font::bold));
-  setupKnob(modS, "S", "", nullAtt);
+  setupKnob(modS, "S", "modSustain", modSAtt);
   setupLabel(modSLabel, "S");
   modSLabel.setFont(juce::Font(10.0f, juce::Font::bold));
-  setupKnob(modR, "R", "", nullAtt);
+  setupKnob(modR, "R", "modRelease", modRAtt);
   setupLabel(modRLabel, "R");
   modRLabel.setFont(juce::Font(10.0f, juce::Font::bold));
 
-  setupSlider(amountSlider, "MOD AMOUNT", true, "", nullAtt);
+  setupSlider(amountSlider, "MOD AMOUNT", true, "modAmount", amountAtt);
 
   startTimerHz(60);
 }
@@ -84,7 +83,7 @@ void ModulateTab::setupKnob(
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
         &att) {
   addAndMakeVisible(s);
-  s.setSliderStyle(juce::Slider::Rotary);
+  s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
   s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
   s.setMouseDragSensitivity(500); // Higher sensitivity for more control
   if (audioProcessor.getAPVTS().getParameter(paramId))
@@ -119,16 +118,57 @@ void ModulateTab::drawLFOWave(juce::Graphics &g, juce::Rectangle<int> area) {
   g.setColour(juce::Colours::black.withAlpha(0.2f));
   g.fillRoundedRectangle(area.toFloat(), 6.0f);
 
+  // Fetch current wave choice
+  int waveType = 0; // Default Sine
+  if (auto *p = audioProcessor.getAPVTS().getParameter("lfoWave"))
+    waveType =
+        (int)p->convertFrom0to1(p->getValue()); // 0=Sine, 1=Square, 2=Triangle
+
+  g.setColour(juce::Colours::cyan);
   juce::Path wave;
   float midY = (float)area.getCentreY();
-  wave.startNewSubPath((float)area.getX(), midY);
-  for (float x = 0; x < area.getWidth(); x += 2.0f) {
-    float y =
-        midY + std::sin(x * 0.04f + phaseOffset) * (area.getHeight() * 0.3f);
-    wave.lineTo((float)area.getX() + x, y);
+  float height = area.getHeight() * 0.3f;
+  float freq = 0.04f;
+
+  if (waveType == 0) { // Sine
+    wave.startNewSubPath((float)area.getX(), midY);
+    for (float x = 0; x < area.getWidth(); x += 2.0f) {
+      float t = (float)x * freq + phaseOffset;
+      float y = midY + std::sin(t) * height;
+      wave.lineTo((float)area.getX() + x, y);
+    }
+  } else if (waveType == 1) { // Square
+    wave.startNewSubPath((float)area.getX(), midY);
+    for (float x = 0; x < area.getWidth(); x += 2.0f) {
+      float t = (float)x * freq + phaseOffset;
+      float val = std::sin(t) >= 0 ? 1.0f : -1.0f;
+      float y = midY + val * height;
+      wave.lineTo((float)area.getX() + x, y);
+    }
+  } else if (waveType == 2) { // Triangle
+    wave.startNewSubPath((float)area.getX(), midY);
+    for (float x = 0; x < area.getWidth(); x += 2.0f) {
+      float t = (float)x * freq + phaseOffset;
+      // Tri: (2/pi)*asin(sin(x)) or linear approx
+      float val =
+          (2.0f / juce::MathConstants<float>::pi) * std::asin(std::sin(t));
+      float y = midY + val * height;
+      wave.lineTo((float)area.getX() + x, y);
+    }
+  } else if (waveType == 3) { // Saw
+    wave.startNewSubPath((float)area.getX(), midY);
+    for (float x = 0; x < area.getWidth(); x += 2.0f) {
+      float t = (float)x * freq + phaseOffset;
+      // Saw: (2/pi) * atan(tan(x/2)) or fmod
+      // Simple sawtooth: 2 * (t/2pi - floor(t/2pi + 0.5))
+      float normT = t / juce::MathConstants<float>::twoPi;
+      float val = 2.0f * (normT - std::floor(normT + 0.5f));
+      float y = midY - val * height; // Invert for standard saw up
+      wave.lineTo((float)area.getX() + x, y);
+    }
   }
-  g.setColour(juce::Colours::cyan);
-  g.strokePath(wave, juce::PathStrokeType(2.5f));
+
+  g.strokePath(wave, juce::PathStrokeType(2.0f));
 }
 
 void ModulateTab::paint(juce::Graphics &g) {

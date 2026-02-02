@@ -7,7 +7,7 @@
 /**
     Manages loading of samples and mapping them to the synth.
 */
-class SampleManager {
+class SampleManager : public juce::ChangeBroadcaster {
 public:
   SampleManager(SynthEngine &synth);
   ~SampleManager();

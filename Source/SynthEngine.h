@@ -81,6 +81,16 @@ private:
   float sampleEndPercent = 1.0f;
   bool isLooping = true;
 
+  // Modulation Envelope
+  juce::ADSR modAdsr;
+  juce::ADSR::Parameters modAdsrParams;
+  float modAmount = 0.5f;
+  int modTarget = 0; // 0=None/Filter, 1=Vol, 2=Pan, 3=Pitch
+
+public: // Accessor needed for setup
+  void updateModADSR(float attack, float decay, float sustain, float release,
+                     float amount, int target);
+
   // Bass processing
   bool isCurrentSoundBass = false;
   juce::dsp::LinkwitzRileyFilter<float> crossoverFilter; // For splitting Bass
@@ -113,6 +123,9 @@ public:
   void updateParams(float attack, float decay, float sustain, float release,
                     float cutoff, float resonance, int filterType,
                     float lfoRate, float lfoDepth);
+
+  void updateModParams(float attack, float decay, float sustain, float release,
+                       float amount, int target); // New Mod Env Params
 
   void updateSampleParams(float tune, float sampleStart, float sampleEnd,
                           bool loop);

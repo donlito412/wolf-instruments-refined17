@@ -17,12 +17,27 @@ void Arpeggiator::reset() {
 }
 
 void Arpeggiator::setParameters(float rate, int mode, int octaves, float gate,
-                                bool on) {
+                                bool on, float density, float complexity,
+                                float spread) {
   rateDiv = rate;
   arpMode = mode;
   numOctaves = octaves;
   gateLength = gate;
   enabled = on;
+  arpDensity = density;       // 0.0-1.0
+  arpComplexity = complexity; // 0.0-1.0
+  arpSpread = spread;
+}
+
+void Arpeggiator::setRhythmStep(int step, bool active) {
+  if (step >= 0 && step < 16)
+    rhythmPattern[(size_t)step] = active;
+}
+
+bool Arpeggiator::getRhythmStep(int step) const {
+  if (step >= 0 && step < 16)
+    return rhythmPattern[(size_t)step];
+  return false;
 }
 
 void Arpeggiator::handleNoteOn(int note, int velocity) {
@@ -56,7 +71,7 @@ int Arpeggiator::getNextNote() {
   if (sortedNotes.empty())
     return -1;
 
-  int numNotes = sortedNotes.size();
+  int numNotes = (int)sortedNotes.size();
   int totalSteps = numNotes * numOctaves;
 
   if (totalSteps == 0)
@@ -93,7 +108,7 @@ int Arpeggiator::getNextNote() {
   int noteIndex = effectiveStep % numNotes;
   int octaveOffset = effectiveStep / numNotes;
 
-  int note = sortedNotes[noteIndex] + (octaveOffset * 12);
+  int note = sortedNotes[(size_t)noteIndex] + (octaveOffset * 12);
 
   // Range check
   if (note > 127)
@@ -214,23 +229,58 @@ void Arpeggiator::process(juce::MidiBuffer &midiMessages, int numSamples,
       int noteToPlay = getNextNote();
 
       if (noteToPlay > 0) {
-        // Add Note On to output
-        processedMidi.addEvent(
-            juce::MidiMessage::noteOn(1, noteToPlay, (juce::uint8)100),
-            currentSamplePos);
+        // Density Check: simple probability
+        // If density < 1.0, we might skip this step.
+        // density 1.0 = play always (except if random gave -1 which shouldn't
+        // happen here) density 0.0 = never play
 
-        int gateSamples = static_cast<int>(samplesPerStep * gateLength);
+        bool shouldPlay = true;
 
-        if (currentSamplePos + gateSamples < numSamples) {
-          // Note Off fits in this block
-          processedMidi.addEvent(juce::MidiMessage::noteOff(1, noteToPlay),
-                                 currentSamplePos + gateSamples);
-        } else {
-          // Note Off is in future block
-          ActiveNote an;
-          an.noteNumber = noteToPlay;
-          an.samplesRemaining = gateSamples - (numSamples - currentSamplePos);
-          activeNotes.push_back(an);
+        // 1. Check Rhythm Pattern (Grid)
+        int stepIdx = currentStep % 16;
+        if (!rhythmPattern[(size_t)stepIdx]) {
+          shouldPlay = false;
+        }
+
+        // 2. Check Density (Probability)
+        if (shouldPlay && arpDensity < 0.99f) {
+          float rnd = juce::Random::getSystemRandom().nextFloat();
+          if (rnd > arpDensity)
+            shouldPlay = false;
+        }
+
+        if (shouldPlay) {
+          // Complexity: Chance to jump octave or add variety
+          int finalNote = noteToPlay;
+          if (arpComplexity > 0.01f) {
+            float rnd = juce::Random::getSystemRandom().nextFloat();
+            if (rnd < arpComplexity) {
+              // 50% chance to go up, 50% down? Or just up?
+              // Let's go UP an octave for "complex" flair
+              finalNote += 12;
+              if (finalNote > 127)
+                finalNote -= 24;
+            }
+          }
+
+          // Add Note On to output
+          processedMidi.addEvent(
+              juce::MidiMessage::noteOn(1, finalNote, (juce::uint8)100),
+              currentSamplePos);
+
+          int gateSamples = static_cast<int>(samplesPerStep * gateLength);
+
+          if (currentSamplePos + gateSamples < numSamples) {
+            // Note Off fits in this block
+            processedMidi.addEvent(juce::MidiMessage::noteOff(1, finalNote),
+                                   currentSamplePos + gateSamples);
+          } else {
+            // Note Off is in future block
+            ActiveNote an;
+            an.noteNumber = finalNote;
+            an.samplesRemaining = gateSamples - (numSamples - currentSamplePos);
+            activeNotes.push_back(an);
+          }
         }
       }
       currentStep++;
@@ -252,13 +302,45 @@ void Arpeggiator::process(juce::MidiBuffer &midiMessages, int numSamples,
 
 ChordEngine::ChordEngine() {}
 
-void ChordEngine::setParameters(int mode, int keys) { chordMode = mode; }
+void ChordEngine::setParameters(int mode, int keys, bool hold) {
+  chordMode = mode;
+  bool wasHolding = holdEnabled;
+  holdEnabled = hold;
+
+  // If we turned OFF hold, kill all stuck notes
+  if (wasHolding && !holdEnabled) {
+    shouldFlushNotes = true;
+  }
+}
 
 void ChordEngine::process(juce::MidiBuffer &midiMessages) {
-  if (chordMode == 0)
-    return; // Off
-
   juce::MidiBuffer processedBuf;
+
+  // 1. Flush Stuck Notes if Hold was just disabled
+  if (shouldFlushNotes) {
+    for (int note : heldNotes) {
+      processedBuf.addEvent(juce::MidiMessage::noteOff(1, note), 0);
+    }
+    heldNotes.clear();
+    shouldFlushNotes = false;
+  }
+
+  // Interpret "Chord Hold" button as "Enable Chords" (User Request)
+  // If button is ON (holdEnabled) but Mode is OFF, force Mode to MINOR (2)
+  int effectiveMode = chordMode;
+  if (holdEnabled && effectiveMode == 0) {
+    effectiveMode = 2; // Default to Minor
+  }
+
+  if (effectiveMode == 0) {
+    return;
+  }
+
+  // Clear original output buffer (we rebuild it)
+  // Actually, standard practice for these processors: read from 'midiMessages',
+  // write to 'processedBuf', then swap. BUT if we 'return', 'midiMessages'
+  // keeps original content (Passthrough). So for Mode=0 returns, it's
+  // Passthrough.
 
   for (const auto metadata : midiMessages) {
     auto msg = metadata.getMessage();
@@ -268,19 +350,33 @@ void ChordEngine::process(juce::MidiBuffer &midiMessages) {
       int vel = msg.getVelocity();
       bool isOn = msg.isNoteOn();
 
+      // HOLD LOGIC:
+      // If NoteOff AND Hold is ON -> Ignore (don't add to processedBuf)
+      // But we must remember it to kill it later.
+      if (!isOn && holdEnabled) {
+        // Ignore Note Off
+        continue;
+      }
+
       auto addEvent = [&](int note) {
-        if (isOn)
+        if (isOn) {
           processedBuf.addEvent(
               juce::MidiMessage::noteOn(1, note, (juce::uint8)vel),
               metadata.samplePosition);
-        else
+          if (holdEnabled)
+            heldNotes.insert(note);
+        } else {
           processedBuf.addEvent(juce::MidiMessage::noteOff(1, note),
                                 metadata.samplePosition);
+          if (heldNotes.find(note) != heldNotes.end()) {
+            heldNotes.erase(note);
+          }
+        }
       };
 
       addEvent(root);
 
-      switch (chordMode) {
+      switch (effectiveMode) {
       case 1: // Major
         addEvent(root + 4);
         addEvent(root + 7);
