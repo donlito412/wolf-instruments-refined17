@@ -69,4 +69,30 @@ private:
   std::array<EffectType, 4> chainOrder = {
       EffectType::Distortion, EffectType::TransientShaper, EffectType::Delay,
       EffectType::Reverb};
+
+  // --- Metering ---
+public:
+  // Public for easy access by Editor
+  std::atomic<float> eqLow{0.0f}, eqMid{0.0f}, eqHigh{0.0f};
+
+  // --- New Effects ---
+  void setHuntEnabled(bool enabled) { huntEnabled = enabled; }
+  void setBitcrushEnabled(bool enabled) { bitcrushEnabled = enabled; }
+
+private:
+  bool huntEnabled = false;
+  bool bitcrushEnabled = false;
+
+  // Analysis Filters for Metering
+  juce::dsp::StateVariableTPTFilter<float> meterFilterLow;
+  juce::dsp::StateVariableTPTFilter<float> meterFilterMid;
+  juce::dsp::StateVariableTPTFilter<float> meterFilterHigh;
+
+  // Bitcrusher
+  float bitcrushPhase = 0.0f;
+  float lastCrushedSampleL = 0.0f;
+  float lastCrushedSampleR = 0.0f;
+
+  void processBitcrusher(juce::AudioBuffer<float> &buffer);
+  void processMetering(const juce::AudioBuffer<float> &buffer);
 };

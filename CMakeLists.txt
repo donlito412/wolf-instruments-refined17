@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(HowlingWolves VERSION 1.0.1)
+project(HowlingWolves VERSION 1.0.13)
 
 # Initialize JUCE 
 # We'll use a recent stable version of JUCE 7

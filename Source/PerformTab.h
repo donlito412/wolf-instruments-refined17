@@ -58,6 +58,10 @@ private:
   // Grid
   // (Removed Title)
 
+  // UI State for Transient Menus
+  bool showChordMenu = false;
+  bool showArpMenu = false;
+
   // Bottom Modules
   juce::Label voicingTitle, spreadTitle, controlsTitle;
   juce::Label densityLabel, complexityLabel, spreadLabel, octaveLabel;

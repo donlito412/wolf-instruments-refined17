@@ -60,10 +60,10 @@ void Arpeggiator::handleNoteOn(int note, int velocity) {
     std::sort(sortedNotes.begin(), sortedNotes.end());
   }
 
-  // Instant Trigger: If this is the first note, force trigger ASAP
+  // Instant Trigger: If this is the first note, force trigger ASAP via flag
   if (wasEmpty) {
     currentStep = 0;
-    noteTime = 1000000.0;
+    pendingTrigger = true;
   }
 }
 
@@ -107,26 +107,24 @@ int Arpeggiator::getNextNote() {
   }
 
   // --- MODE 2: ARPEGGIATOR (Arp Button ON) ---
-  // Classic Arp patterns based on held notes
-
   int noteIdx = 0;
 
   switch (arpMode) {
-  case 0: // UP
-    noteIdx = currentStep % numNotes;
+  case 1: // UP
+    noteIdx = currentNoteIndex % numNotes;
     break;
 
-  case 1: // DOWN
-    noteIdx = (numNotes - 1) - (currentStep % numNotes);
+  case 2: // DOWN
+    noteIdx = (numNotes - 1) - (currentNoteIndex % numNotes);
     break;
 
-  case 2: // UP/DOWN
+  case 3: // UP/DOWN (Inclusive)
   {
     if (numNotes < 2) {
       noteIdx = 0;
     } else {
       int span = (numNotes * 2) - 2;
-      int pos = currentStep % span;
+      int pos = currentNoteIndex % span;
       if (pos < numNotes)
         noteIdx = pos;
       else
@@ -134,51 +132,43 @@ int Arpeggiator::getNextNote() {
     }
   } break;
 
-  case 3: // RANDOM
-    // Simple pseudo-random based on step to be deterministic per loop?
-    // Or true random? True random is livelier.
+  case 4: // RANDOM
     noteIdx = juce::Random::getSystemRandom().nextInt(numNotes);
     break;
+
+  default: // OFF or Manual
+    return -1;
   }
 
-  // Handle Octave Range
-  // Simple logic: iterate notes, then next octave...
-  // For now, let's keep it simple: mapped to sortedNotes directly + Octave
-  // Wrap? Let's implement Octave Spanning: Virtual Notes = sortedNotes *
-  // numOctaves.
+  // Handle Octave Wrapping
+  if (numOctaves > 1 && (arpMode == 1 || arpMode == 2 || arpMode == 3)) {
+    int totalSteps = numNotes * numOctaves;
 
-  if (numOctaves > 1) {
-    int totalVirtual = numNotes * numOctaves;
-    // Re-calc index based on total virtual notes
-    switch (arpMode) {
-    case 0:
-      noteIdx = currentStep % totalVirtual;
-      break; // UP
-    case 1:
-      noteIdx = (totalVirtual - 1) - (currentStep % totalVirtual);
-      break; // DOWN
-      // ... simplify for now, just map noteIdx to Note + Octave
+    // Re-calculate effective index based on Virtual Octave Range
+    if (arpMode == 3) { // Up/Down
+      if (totalSteps < 2) {
+        noteIdx = 0;
+      } else {
+        int span = (totalSteps * 2) - 2;
+        int pos = currentNoteIndex % span;
+        int effective = (pos < totalSteps) ? pos : (span - pos);
+
+        int actualNote = effective % numNotes;
+        int oct = effective / numNotes;
+        return sortedNotes[actualNote] + (oct * 12);
+      }
+    } else { // UP or DOWN
+      int effective = currentNoteIndex % totalSteps;
+      if (arpMode == 2) { // Down
+        effective = (totalSteps - 1) - effective;
+      }
+      int actualNote = effective % numNotes;
+      int oct = effective / numNotes;
+      return sortedNotes[actualNote] + (oct * 12);
     }
   }
 
-  // Correction for simple implementation above:
-  // If we just stick to single octave for now to ensure it works.
-  // Or:
-  int octaveOffset = 0;
-  if (numOctaves > 1) {
-    int cycle = currentStep / numNotes;
-    int oct = cycle % numOctaves;
-    octaveOffset = oct * 12;
-    // Wrap note index locally
-    noteIdx = currentStep % numNotes;
-  }
-
-  if (noteIdx < 0)
-    noteIdx = 0;
-  if (noteIdx >= numNotes)
-    noteIdx = 0;
-
-  return sortedNotes[noteIdx] + octaveOffset;
+  return sortedNotes[noteIdx];
 }
 
 double Arpeggiator::getSamplesPerStep(juce::AudioPlayHead *playHead) {
@@ -194,16 +184,34 @@ double Arpeggiator::getSamplesPerStep(juce::AudioPlayHead *playHead) {
   if (bpm < 20.0)
     bpm = 120.0;
 
-  // RateDiv: 0=1/4, 1=1/8...
+  // RateDiv: Passed as Index cast to float (0.0, 1.0, 2.0, 3.0)
+  // or Normalized? Current usage in PluginProcessor is `(float)rateIdx`.
+  // So we expect 0.0, 1.0, 2.0, 3.0.
+
   double quarterNoteSamples = (60.0 / bpm) * currentSampleRate;
 
-  if (rateDiv <= 0.1f)
-    return quarterNoteSamples; // 1/4
-  if (rateDiv <= 0.4f)
-    return quarterNoteSamples / 2.0; // 1/8
-  if (rateDiv <= 0.7f)
-    return quarterNoteSamples / 4.0; // 1/16
-  return quarterNoteSamples / 8.0;   // 1/32
+  // Safe integer cast
+  int r = (int)(rateDiv + 0.1f); // Round nearest
+
+  double speed = quarterNoteSamples;
+  switch (r) {
+  case 0:
+    speed = quarterNoteSamples;
+    break; // 1/4
+  case 1:
+    speed = quarterNoteSamples / 2.0;
+    break; // 1/8
+  case 2:
+    speed = quarterNoteSamples / 4.0;
+    break; // 1/16
+  case 3:
+    speed = quarterNoteSamples / 8.0;
+    break; // 1/32
+  default:
+    speed = quarterNoteSamples;
+    break; // Fallback
+  }
+  return speed;
 }
 
 void Arpeggiator::process(juce::MidiBuffer &midiMessages, int numSamples,
@@ -226,7 +234,10 @@ void Arpeggiator::process(juce::MidiBuffer &midiMessages, int numSamples,
   // If Disabled BUT Grid has steps -> Run Sequencer Logic
   // If Enabled -> Run Arp Logic
 
-  if (!enabled && isGridEmpty()) {
+  // New Logic: If Disabled OR Mode is 0 (- Select -) AND Grid Empty -> Bypass
+  bool bypassed = !enabled || (arpMode == 0);
+
+  if (bypassed && isGridEmpty()) {
     // Standard Passthrough of events handled by flushing active notes logic
     // below? No, if we return here, we might leave active notes hanging if we
     // don't process offs. "activeNotes" tracks generated notes. Input notes
@@ -287,75 +298,44 @@ void Arpeggiator::process(juce::MidiBuffer &midiMessages, int numSamples,
     return;
   }
 
+  // Arp Timing Logic
   double samplesPerStep = getSamplesPerStep(playHead);
   if (samplesPerStep < 100.0)
     samplesPerStep = 100.0;
 
-  int samplesRemaining = numSamples;
-  int currentSamplePos = 0;
+  // Immediate Trigger Logic
+  if (pendingTrigger) {
+    noteTime = samplesPerStep + 1.0;
+    pendingTrigger = false;
+    currentNoteIndex = 0;
+  }
 
-  while (samplesRemaining > 0) {
-    if (noteTime >= samplesPerStep) {
-      noteTime -= samplesPerStep;
+  // Robust Accumulator Loop (The Audio Programmer Method)
+  // Simply add samples and check if we passed the threshold.
+  noteTime += numSamples;
 
-      int noteToPlay = getNextNote();
+  while (noteTime >= samplesPerStep) {
+    noteTime -= samplesPerStep;
 
-      if (noteToPlay > 0) {
-        processedMidi.addEvent(
-            juce::MidiMessage::noteOn(1, noteToPlay, (juce::uint8)100),
-            currentSamplePos);
+    // Trigger Note
+    int note = getNextNote();
+    if (note > 0) {
+      // Add Note On at offset 0 (simplified for block alignment)
+      processedMidi.addEvent(
+          juce::MidiMessage::noteOn(1, note, (juce::uint8)100), 0);
 
-        int gateSamples = static_cast<int>(samplesPerStep * gateLength);
+      // Calculate Duration
+      int gateSamples = static_cast<int>(samplesPerStep * gateLength);
 
-        ActiveNote an;
-        an.noteNumber = noteToPlay;
-        // relative to current block start: currentSamplePos + gateSamples
-        // stored as remaining from NOW? No, remaining from block start usually?
-        // Logic above uses `samplesRemaining` against `numSamples`.
-        // Let's stick to: activeNotes stores samples relative to *current block
-        // start*? No, typically stores "samples *remaining* until off".
+      ActiveNote an;
+      an.noteNumber = note;
+      an.samplesRemaining = gateSamples;
+      activeNotes.push_back(an);
 
-        if (gateSamples < samplesRemaining) {
-          // Ends within this block
-          processedMidi.addEvent(juce::MidiMessage::noteOff(1, noteToPlay),
-                                 currentSamplePos + gateSamples);
-        } else {
-          // Carries over
-          an.samplesRemaining =
-              gateSamples - (samplesRemaining); // wait, math check.
-          // actually: an.samplesRemaining = (currentSamplePos + gateSamples) -
-          // numSamples? No, simply: gateSamples is duration. allocated:
-          // samplesRemaining (in this block). remaining = gateSamples -
-          // samplesRemaining (left in block AFTER this pos) WAIT.
-
-          // Correct math:
-          // Time until end of block = numSamples - currentSamplePos.
-          // If gate > TimeUntilEnd, then remainder = gate - TimeUntilEnd.
-          an.samplesRemaining = gateSamples - (numSamples - currentSamplePos);
-          activeNotes.push_back(an);
-        }
-      }
+      // Advance Pattern
+      currentNoteIndex++;
       currentStep++;
     }
-
-    // Advance time
-    int amount = std::min(samplesRemaining, 32); // Process in chunks
-    // Optimization: advance to next event to avoid small steps?
-    // For now, chunking is safe.
-
-    // Check if we approach samplesPerStep
-    double dist = samplesPerStep - noteTime;
-    if (dist < 32.0 && dist > 0.0) {
-      amount = (int)std::ceil(dist);
-    }
-    if (amount > samplesRemaining)
-      amount = samplesRemaining;
-    if (amount < 1)
-      amount = 1;
-
-    noteTime += amount;
-    samplesRemaining -= amount;
-    currentSamplePos += amount;
   }
 
   midiMessages.swapWith(processedMidi);
@@ -390,16 +370,14 @@ void ChordEngine::process(juce::MidiBuffer &midiMessages) {
     shouldFlushNotes = false;
   }
 
-  // Interpret "Chord Hold" button as "Enable Chords" (User Request)
-  // If button is ON (holdEnabled) but Mode is OFF, force Mode to MINOR (2)
-  int effectiveMode = chordMode;
-  if (holdEnabled && effectiveMode == 0) {
-    effectiveMode = 2; // Default to Minor
+  // "CHORDS" Button (was Hold) is now Master Switch
+  // If button is OFF (holdEnabled == false), Bypass Chords completely.
+  // If button is OFF (holdEnabled == false) OR Mode is 0 (Select), Bypass.
+  if (!holdEnabled || chordMode == 0) {
+    return; // Passthrough original notes
   }
 
-  if (effectiveMode == 0) {
-    return;
-  }
+  int effectiveMode = chordMode; // Direct map: 1=Major, 2=Minor...
 
   // Clear original output buffer (we rebuild it)
   // Actually, standard practice for these processors: read from 'midiMessages',
@@ -415,13 +393,14 @@ void ChordEngine::process(juce::MidiBuffer &midiMessages) {
       int vel = msg.getVelocity();
       bool isOn = msg.isNoteOn();
 
-      // HOLD LOGIC:
-      // If NoteOff AND Hold is ON -> Ignore (don't add to processedBuf)
-      // But we must remember it to kill it later.
-      if (!isOn && holdEnabled) {
-        // Ignore Note Off
-        continue;
-      }
+      // HOLD LOGIC REMOVED:
+      // We now treat "holdEnabled" strictly as "Chords Enabled" (Momentary).
+      // Note Offs are allowed to pass through and will be transposed to kill
+      // chord voices.
+
+      // if (!isOn && holdEnabled) {
+      //   continue;
+      // }
 
       auto addEvent = [&](int note) {
         if (isOn) {
@@ -429,7 +408,7 @@ void ChordEngine::process(juce::MidiBuffer &midiMessages) {
               juce::MidiMessage::noteOn(1, note, (juce::uint8)vel),
               metadata.samplePosition);
           if (holdEnabled)
-            heldNotes.insert(note);
+            heldNotes.insert(note); // Track for flushing if disabled mid-play
         } else {
           processedBuf.addEvent(juce::MidiMessage::noteOff(1, note),
                                 metadata.samplePosition);

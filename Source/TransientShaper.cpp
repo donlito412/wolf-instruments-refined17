@@ -63,7 +63,8 @@ void TransientShaper::process(juce::AudioBuffer<float> &buffer) {
       float fast = fastEnvs[0].process(input);
       float slow = slowEnvs[0].process(input);
       float transient = fast - slow;
-      float gainChange = 1.0f + (transient * bite * 2.0f);
+      // Boosted intensity for more noticeable "Bite"
+      float gainChange = 1.0f + (transient * bite * 6.0f);
       gainChange = juce::jlimit(0.1f, 4.0f, gainChange);
       ch0[i] = input * gainChange;
     }
@@ -74,7 +75,7 @@ void TransientShaper::process(juce::AudioBuffer<float> &buffer) {
       float fast = fastEnvs[1].process(input);
       float slow = slowEnvs[1].process(input);
       float transient = fast - slow;
-      float gainChange = 1.0f + (transient * bite * 2.0f);
+      float gainChange = 1.0f + (transient * bite * 6.0f);
       gainChange = juce::jlimit(0.1f, 4.0f, gainChange);
       ch1[i] = input * gainChange;
     }

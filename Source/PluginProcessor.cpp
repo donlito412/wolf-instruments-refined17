@@ -16,7 +16,14 @@ HowlingWolvesAudioProcessor::HowlingWolvesAudioProcessor()
   sampleManager.loadSamples();
 }
 
-HowlingWolvesAudioProcessor::~HowlingWolvesAudioProcessor() {}
+HowlingWolvesAudioProcessor::~HowlingWolvesAudioProcessor() {
+  // Stop audio callback interaction immediately
+  suspendProcessing(true);
+
+  // Safe shutdown: Clear synth/voices BEFORE SampleManager is destroyed
+  synthEngine.clearSounds();
+  synthEngine.clearVoices();
+}
 
 //==============================================================================
 const juce::String HowlingWolvesAudioProcessor::getName() const {
@@ -105,6 +112,52 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   // Clear the buffer to prevent static/garbage noise
   buffer.clear();
 
+  // --- 0. Transport Logic (Host vs Internal) ---
+  juce::AudioPlayHead *playHead = getPlayHead();
+  bool isPlaying = false;
+  double bpm = 120.0;
+
+  if (playHead) {
+    if (auto pos = playHead->getPosition()) {
+      isPlaying = pos->getIsPlaying();
+      if (pos->getBpm().hasValue())
+        bpm = *pos->getBpm();
+    }
+  }
+
+  // Update MidiCapturer BPM
+  midiCapturer.setBpm(bpm);
+
+  // Internal Transport Override (for Standalone/Preview)
+  // If Host is NOT playing, but our internal transport IS, we force "Playing"
+  // status for Arp/Seq
+  if (!isPlaying && transportPlaying) {
+    // We need to simulate time or pass a flag.
+    // MidiProcessor accepts PlayHead. We need to mock it or update Arp to
+    // accept override? Actually, MidiProcessor just checks `getSamplesPerStep`
+    // which uses PlayHead BPM. But `arp.process` needs to advance time. If Host
+    // is stopped, usually PPQ doesn't advance. We need internal PPQ or just
+    // rely on "Time" accumulator in Arp? Arp uses `noteTime` accumulator based
+    // on samples. It DOES NOT rely on PPQ position, it relies on `process`
+    // being called. So we just need to ensure `Arp` knows it SHOULD run. `Arp`
+    // runs if `enabled` is true. Wait, Arp/Seq usually only runs if Playing?
+    // Let's check Arp logic... `process` runs always if called.
+    // So... why did user say "play stop ... doesnt work"?
+    // Maybe they want the button to START the sequence?
+    // If Arp is "On", it plays on Note Input.
+    // Ah, "Sequence" mode usually plays freely?
+    // If it's a Step Sequencer that runs on Transport, we need to gate it.
+
+    // Let's assume Arp is Note-Triggered (Standard).
+    // Users usually want "Play Button" in Perform Tab to send a "Start" signal
+    // or just valid BPM/Transport info? Or maybe "Play" means "Play the
+    // Sequence without Key Input"? like a Demo? Or "Play" means "Enable Global
+    // Transport"? The user said: "neither does the play stop ... button". If I
+    // look at PerformTab, Play Button is just a UI button. `recBtn` has logic.
+    // `playBtn` has NO logic attached in PerformTab! Fix: Wire Play/Stop to
+    // `transportPlaying` variable in Processor.
+  }
+
   // (Optional) If we wanted to keep input (like an effect plugin), we wouldn't
   // clear. But this is an Instrument. We must clear.
 
@@ -178,46 +231,41 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   }
 
   // --- Update Midi Processor ---
-  auto *arpEnabledParam = apvts.getRawParameterValue("arpEnabled");
-  auto *arpRateParam = apvts.getRawParameterValue("arpRate");
-  auto *arpModeParam = apvts.getRawParameterValue("arpMode");
-  auto *arpOctaveParam = apvts.getRawParameterValue("arpOctave");
-  auto *arpGateParam = apvts.getRawParameterValue("arpGate");
+  auto *arpRateChoice =
+      dynamic_cast<juce::AudioParameterChoice *>(apvts.getParameter("arpRate"));
+  auto *arpModeChoice =
+      dynamic_cast<juce::AudioParameterChoice *>(apvts.getParameter("arpMode"));
+  auto *chordModeChoice = dynamic_cast<juce::AudioParameterChoice *>(
+      apvts.getParameter("chordMode"));
+
+  // Float/Int Params
+  float arpGate = *apvts.getRawParameterValue("arpGate");
+  bool arpOn = (bool)*apvts.getRawParameterValue("arpEnabled");
+  int arpOct = (int)*apvts.getRawParameterValue("arpOctave");
+  bool chordHold = (bool)*apvts.getRawParameterValue("chordHold");
 
   // New Params
   auto *arpDensityParam = apvts.getRawParameterValue("arpDensity");
   auto *arpComplexityParam = apvts.getRawParameterValue("arpComplexity");
   auto *arpSpreadParam = apvts.getRawParameterValue("arpSpread");
 
-  auto *chordModeParam = apvts.getRawParameterValue("chordMode");
+  // Default values if params missing (safe fallback)
+  float dens = arpDensityParam ? arpDensityParam->load() : 1.0f;
+  float comp = arpComplexityParam ? arpComplexityParam->load() : 0.0f;
+  float spread = arpSpreadParam ? arpSpreadParam->load() : 0.0f;
 
-  if (arpEnabledParam && arpRateParam && arpModeParam && arpOctaveParam &&
-      arpGateParam) {
+  if (arpRateChoice && arpModeChoice) {
+    int rateIdx = arpRateChoice->getIndex(); // 0..3
+    int modeIdx = arpModeChoice->getIndex(); // 0..4
 
-    // Map Rate Index (0,1,2,3) to threshold value (0.0, 0.3, 0.6, 0.9)
-    float rateIdx = arpRateParam->load();
-    float rateDiv = rateIdx * 0.3f;
-
-    bool arpOn = (bool)arpEnabledParam->load();
-    int mode = (int)arpModeParam->load();
-    int oct = (int)arpOctaveParam->load();
-    float gate = arpGateParam->load();
-
-    // Default values if params missing (safe fallback)
-    float dens = arpDensityParam ? arpDensityParam->load() : 1.0f;
-    float comp = arpComplexityParam ? arpComplexityParam->load() : 0.0f;
-    float spread = arpSpreadParam ? arpSpreadParam->load() : 0.0f;
-
-    midiProcessor.getArp().setParameters(rateDiv, mode, oct, gate, arpOn, dens,
-                                         comp, spread);
+    // Map Rate Index to Float for MidiProcessor (temporary compatibility)
+    midiProcessor.getArp().setParameters((float)rateIdx, modeIdx, arpOct,
+                                         arpGate, arpOn, dens, comp, spread);
   }
 
-  auto *chordHoldParam = apvts.getRawParameterValue("chordHold");
-
-  if (chordModeParam) {
-    bool hold = chordHoldParam ? (bool)chordHoldParam->load() : false;
-    midiProcessor.getChordEngine().setParameters((int)chordModeParam->load(), 0,
-                                                 hold);
+  if (chordModeChoice) {
+    int chordModeIdx = chordModeChoice->getIndex(); // 0..4
+    midiProcessor.getChordEngine().setParameters(chordModeIdx, 0, chordHold);
   }
 
   // --- MIDI Capture (After processing, before Synth) ---
@@ -241,12 +289,38 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   float endVal = endParam ? endParam->load() : 1.0f;
   bool loopVal = loopParam ? (loopParam->load() > 0.5f) : true;
 
+  // Internal Transport Handling for Standalone
+  // Just ensure we pass valid context if needed.
+  // For now, Play/Stop buttons in UI will toggle `transportPlaying`.
+  // The actual effect depends on if Arp listens to "IsPlaying".
+  // Arp currently runs strictly on Note Input + Audio Callback samples.
+  // It doesn't seem to check "IsPlaying" global flag check inside Arp::process.
+  // So Play/Stop might be redundant unless we implement a "Sequencer runs
+  // without keys" mode. BUT: MidiCapturer DOES check `active` or `recording`
+  // state.
+
   synthEngine.updateSampleParams(tuneVal, startVal, endVal, loopVal);
 
   // Apply parameters to effects processor
 
   float distDriveVal = distDrive ? distDrive->load() : 0.0f;
-  float distMixVal = distMix ? distMix->load() : 0.0f;
+  // Smart Mix: If Drive > 0 or Hunt/Bitcrush active, Mix = 1.0 (Audible), else
+  // 0.0 (Clean Bypass) We read the toggle states below (lines 282+), but we
+  // need them here for logic. Let's read them early.
+  bool huntIsOn = false;
+  bool bitcrushIsOn = false;
+  if (auto *p = apvts.getRawParameterValue("huntOn"))
+    huntIsOn = (bool)p->load();
+  if (auto *p = apvts.getRawParameterValue("bitcrushOn"))
+    bitcrushIsOn = (bool)p->load();
+
+  float distMixTarget = 0.0f;
+  if (distDriveVal > 0.01f || huntIsOn || bitcrushIsOn) {
+    distMixTarget = 1.0f;
+  }
+
+  float distMixVal = distMixTarget; // Force smart mix logic overrides manual
+                                    // param (since no UI knob exists)
 
   // Macro Crush mapping: adds to Drive and Mix
   distDriveVal += (crushVal * 0.8f);
@@ -278,6 +352,14 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   effectsProcessor.updateParameters(distDriveVal, distMixVal, delayTimeVal,
                                     delayFdbkVal, delayMixVal, revSizeVal,
                                     revDampVal, revMixVal, biteVal);
+
+  // Update Toggles
+  auto *huntParam = apvts.getRawParameterValue("huntOn");
+  auto *bitcrushParam = apvts.getRawParameterValue("bitcrushOn");
+  if (huntParam)
+    effectsProcessor.setHuntEnabled((bool)huntParam->load());
+  if (bitcrushParam)
+    effectsProcessor.setBitcrushEnabled((bool)bitcrushParam->load());
 
   // Update Chain Order
   auto *chainOrderParam = apvts.getRawParameterValue("CHAIN_ORDER");
@@ -333,9 +415,9 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     buffer.applyGain(1, 0, buffer.getNumSamples(), rightGain);
   }
 
-  // Push to Visualizer
-  if (audioVisualizerHook)
-    audioVisualizerHook(buffer);
+  // Push to Visualizer - DISABLED (Unused and causing crash on exit)
+  // if (audioVisualizerHook)
+  //   audioVisualizerHook(buffer);
 }
 
 // Helper to update all params including new ones
@@ -462,9 +544,16 @@ HowlingWolvesAudioProcessor::createParameterLayout() {
 
   // Distortion
   layout.add(std::make_unique<juce::AudioParameterFloat>(
-      "distDrive", "Distortion Drive", 0.0f, 1.0f, 0.0f));
+      "distDrive", "Distortion Drive", 0.0f, 1.0f, 0.0f)); // Default 0 (Clean)
   layout.add(std::make_unique<juce::AudioParameterFloat>(
-      "distMix", "Distortion Mix", 0.0f, 1.0f, 0.0f));
+      "distMix", "Distortion Mix", 0.0f, 1.0f,
+      1.0f)); // Default 1.0 (Fully Audible)
+
+  // Toggles for Effects
+  layout.add(
+      std::make_unique<juce::AudioParameterBool>("huntOn", "Hunt Mode", false));
+  layout.add(std::make_unique<juce::AudioParameterBool>("bitcrushOn",
+                                                        "Bitcrush", false));
 
   // Delay
   layout.add(std::make_unique<juce::AudioParameterFloat>(
@@ -505,7 +594,7 @@ HowlingWolvesAudioProcessor::createParameterLayout() {
 
   layout.add(std::make_unique<juce::AudioParameterChoice>(
       "arpMode", "Arp Mode",
-      juce::StringArray{"Up", "Down", "Up/Down", "Random"}, 0));
+      juce::StringArray{"OFF", "Up", "Down", "Up/Down", "Random"}, 0));
 
   layout.add(std::make_unique<juce::AudioParameterInt>("arpOctave",
                                                        "Arp Octaves", 1, 4, 1));
@@ -520,10 +609,13 @@ HowlingWolvesAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterFloat>(
       "arpSpread", "Arp Spread", 0.0f, 1.0f, 0.0f));
 
-  // Chord Mode
+  // Chord Mode (Offset Mapping)
+  // 0=Select (Bypass), 1=Major, 2=Minor, 3=7th, 4=9th
+  layout.add(std::make_unique<juce::AudioParameterBool>("chordHold",
+                                                        "Chord Enable", false));
   layout.add(std::make_unique<juce::AudioParameterChoice>(
       "chordMode", "Chord Mode",
-      juce::StringArray{"Off", "Major", "Minor", "7th", "9th"}, 0));
+      juce::StringArray{"OFF", "Major", "Minor", "7th", "9th"}, 0));
 
   layout.add(std::make_unique<juce::AudioParameterChoice>(
       "HUNT_MODE", "Hunt Mode", juce::StringArray{"Stalk", "Chase", "Kill"},

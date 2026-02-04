@@ -27,10 +27,9 @@ private:
   double currentSampleRate = 44100.0;
 
   // State
-  // ...
-  int currentNote = -1;
-  int currentStep = 0;
-  double noteTime = 0.0;
+  int currentNoteIndex = 0;     // Tracks position in the Arp Pattern (0 to N-1)
+  int currentStep = 0;          // Tracks total steps triggers (for Random/Seq)
+  double noteTime = 0.0;        // Sample Accumulator
   std::vector<int> sortedNotes; // Held notes sorted
 
   struct ActiveNote {
@@ -38,6 +37,7 @@ private:
     int samplesRemaining;
   };
   std::vector<ActiveNote> activeNotes;
+  bool pendingTrigger = false;
 
   // Params
   bool enabled = false;

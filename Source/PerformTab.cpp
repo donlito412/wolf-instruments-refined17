@@ -44,8 +44,9 @@ PerformTab::PerformTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
 
   // --- 5. ARP CONTROLS (BOTTOM RIGHT) ---
   setupLabel(controlsTitle, "ARP CONTROLS");
-  setupButton(chordHoldBtn, "CHORD HOLD", "chordHold", chordHoldAtt,
+  setupButton(chordHoldBtn, "CHORDS", "chordHold", chordHoldAtt,
               juce::Colours::cyan);
+  chordHoldBtn.setTooltip("Master Switch: Enable/Disable Chord Generation");
   chordHoldBtn.setTooltip("Holds the active chord after keys are released");
 
   setupButton(arpSyncBtn, "ARP SYNC", "arpEnabled", arpSyncAtt,
@@ -64,6 +65,122 @@ PerformTab::PerformTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
   recBtn.onClick = [this] {
     bool isRec = recBtn.getToggleState();
     audioProcessor.getMidiCapturer().setRecording(isRec);
+  };
+
+  // Chord Button Logic (Popup Menu)
+  chordHoldBtn.onClick = [this] {
+    juce::PopupMenu m;
+    m.addItem(1, "OFF", true, false); // ID 1
+    m.addItem(2, "Major", true, false);
+    m.addItem(3, "Minor", true, false);
+    m.addItem(4, "7th", true, false);
+    m.addItem(5, "9th", true, false);
+
+    m.showMenuAsync(
+        juce::PopupMenu::Options().withTargetComponent(chordHoldBtn),
+        [this](int length) {
+          if (length == 0)
+            return; // Cancelled
+
+          // Handle Selection
+          auto *modeParam = dynamic_cast<juce::AudioParameterChoice *>(
+              audioProcessor.getAPVTS().getParameter("chordMode"));
+          auto *holdParam = audioProcessor.getAPVTS().getParameter("chordHold");
+
+          if (length == 1) { // OFF
+            if (holdParam)
+              holdParam->setValueNotifyingHost(0.0f); // OFF
+            if (modeParam)
+              *modeParam = 0; // Index 0 (OFF in param usually?) Wait, Param has
+                              // "OFF" as item 1?
+            // Let's check Param config. Usually 0=OFF.
+            // If param choices are ["OFF", "Major", ...], then Index 0 is OFF.
+            if (modeParam)
+              *modeParam = 0;
+          } else {
+            // Enable Chords
+            if (holdParam)
+              holdParam->setValueNotifyingHost(1.0f);
+            // Map ID 2 (Major) -> Index 1?
+            // If Choices: 0:OFF, 1:Major, 2:Minor...
+            // ID 2 -> Index 1.
+            if (modeParam)
+              *modeParam = length - 1;
+          }
+        });
+  };
+
+  // Arp Button Logic (Popup Menu)
+  arpSyncBtn.onClick = [this] {
+    juce::PopupMenu m;
+    m.addItem(1, "OFF", true, false);
+    m.addItem(2, "Up", true, false);
+    m.addItem(3, "Down", true, false);
+    m.addItem(4, "Up/Down", true, false);
+    m.addItem(5, "Random", true, false);
+
+    m.showMenuAsync(
+        juce::PopupMenu::Options().withTargetComponent(arpSyncBtn),
+        [this](int length) {
+          if (length == 0)
+            return;
+
+          auto *modeParam = dynamic_cast<juce::AudioParameterChoice *>(
+              audioProcessor.getAPVTS().getParameter("arpMode"));
+          auto *enParam = audioProcessor.getAPVTS().getParameter("arpEnabled");
+
+          if (length == 1) { // OFF
+            if (enParam)
+              enParam->setValueNotifyingHost(0.0f);
+            if (modeParam)
+              *modeParam = 0;
+          } else {
+            if (enParam)
+              enParam->setValueNotifyingHost(1.0f);
+            if (modeParam)
+              *modeParam = length - 1;
+          }
+        });
+  };
+
+  // Removed old ComboBox Logic (Conflicting)
+  // chordModeSelector.onChange...
+  // arpModeSelector.onChange...
+
+  // Initial State: Hide menus
+  chordModeSelector.setVisible(false);
+  arpModeSelector.setVisible(false);
+
+  // Play Button Logic
+  playBtn.onClick = [this] {
+    bool isPlaying = playBtn.getToggleState();
+    audioProcessor.setTransportPlaying(isPlaying);
+    // Ensure Stop is untoggled if Play is toggled
+    if (isPlaying) {
+      stopBtn.setToggleState(false, juce::dontSendNotification);
+    }
+  };
+
+  // Stop Button Logic
+  stopBtn.onClick = [this] {
+    bool isStopped = stopBtn.getToggleState();
+    if (isStopped) {
+      // Stop means "Not Playing"
+      playBtn.setToggleState(false, juce::dontSendNotification);
+      audioProcessor.setTransportPlaying(false);
+
+      // Optional: Reset Transport/Arp position?
+      // audioProcessor.getMidiProcessor().reset();
+      // Resetting might be desired behavior for "Stop".
+      audioProcessor.getMidiProcessor().reset();
+
+      // Untoggle itself after a moment? Or acting as a "Toggle State"?
+      // User said "play stop ... button". Usually Play is toggle, Stop is
+      // trigger or toggle. If Stop is a toggle... let's leave it. But usually
+      // Stop just resets. Let's make Stop a momentary trigger
+      // implementation-wise for UI but logical reset. We'll leave the toggle
+      // state as user might expect visual feedback.
+    }
   };
 
   startTimerHz(30); // 30 FPS Refresh
@@ -201,7 +318,7 @@ void PerformTab::setupKnob(
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
         &att) {
   addAndMakeVisible(s);
-  s.setSliderStyle(juce::Slider::Rotary);
+  s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
   s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
   s.setMouseDragSensitivity(
       500); // Standard is 250, 500 = finer control/less loose
@@ -218,6 +335,7 @@ void PerformTab::setupSlider(
   addAndMakeVisible(s);
   s.setSliderStyle(juce::Slider::LinearHorizontal);
   s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+  s.setMouseDragSensitivity(500);
   if (auto *p = audioProcessor.getAPVTS().getParameter(paramId))
     att =
         std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -233,10 +351,11 @@ void PerformTab::setupComboBox(
 
   // Add Items based on Param ID
   if (paramId == "arpMode") {
-    c.addItem("UP", 1);
-    c.addItem("DOWN", 2);
-    c.addItem("UP/DOWN", 3);
-    c.addItem("RANDOM", 4);
+    c.addItem("OFF", 1);
+    c.addItem("UP", 2);
+    c.addItem("DOWN", 3);
+    c.addItem("UP/DOWN", 4);
+    c.addItem("RANDOM", 5);
   } else if (paramId == "chordMode") {
     c.addItem("OFF", 1);
     c.addItem("MAJOR", 2);

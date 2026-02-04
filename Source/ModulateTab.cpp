@@ -79,7 +79,20 @@ ModulateTab::ModulateTab(HowlingWolvesAudioProcessor &p) : audioProcessor(p) {
 ModulateTab::~ModulateTab() { stopTimer(); }
 
 void ModulateTab::timerCallback() {
-  phaseOffset += 0.05f;
+  // Only animate if notes are playing, per user request
+  bool isAnyVoiceActive = false;
+  for (int i = 0; i < audioProcessor.getSynth().getNumVoices(); ++i) {
+    if (auto *v = audioProcessor.getSynth().getVoice(i)) {
+      if (v->isVoiceActive()) {
+        isAnyVoiceActive = true;
+        break;
+      }
+    }
+  }
+
+  if (isAnyVoiceActive) {
+    phaseOffset += 0.05f;
+  }
   repaint();
 }
 

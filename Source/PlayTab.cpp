@@ -80,8 +80,9 @@ void PlayTab::setupKnob(
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>
         &att) {
   addAndMakeVisible(s);
-  s.setSliderStyle(juce::Slider::Rotary);
+  s.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
   s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+  s.setMouseDragSensitivity(500);
   if (auto *p = audioProcessor.getAPVTS().getParameter(paramId))
     att =
         std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -96,6 +97,7 @@ void PlayTab::setupSlider(
   s.setSliderStyle(h ? juce::Slider::LinearHorizontal
                      : juce::Slider::LinearVertical);
   s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+  s.setMouseDragSensitivity(500);
   if (auto *p = audioProcessor.getAPVTS().getParameter(paramId))
     att =
         std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(

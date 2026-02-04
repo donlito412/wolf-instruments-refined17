@@ -2,10 +2,10 @@
 
 # Configuration
 PLUGIN_NAME="Howling Wolves"
-PLUGIN_VERSION="0.0.2"
+PLUGIN_VERSION="1.0.13"
 IDENTIFIER="com.donlito412.howlingwolves"
-BUILD_DIR="build/HowlingWolves_artefacts/Release"
-STAGING_DIR="Installer/staging"
+BUILD_ROOT="build_v13/HowlingWolves_artefacts"
+STAGING_DIR="Installer/staging_v13"
 OUTPUT_DIR="Installer/output"
 
 # Clean
@@ -23,15 +23,15 @@ echo "Staging VST3..."
 # staging/vst3_payload/Library/Audio/Plug-Ins/VST3/Howling Wolves.vst3
 
 mkdir -p "$STAGING_DIR/vst3_payload/Library/Audio/Plug-Ins/VST3"
-cp -R "$BUILD_DIR/VST3/$PLUGIN_NAME.vst3" "$STAGING_DIR/vst3_payload/Library/Audio/Plug-Ins/VST3/"
+cp -R "$BUILD_ROOT/Release/VST3/$PLUGIN_NAME.vst3" "$STAGING_DIR/vst3_payload/Library/Audio/Plug-Ins/VST3/"
 
 echo "Staging AU..."
 mkdir -p "$STAGING_DIR/au_payload/Library/Audio/Plug-Ins/Components"
-cp -R "$BUILD_DIR/AU/$PLUGIN_NAME.component" "$STAGING_DIR/au_payload/Library/Audio/Plug-Ins/Components/"
+cp -R "$BUILD_ROOT/Release/AU/$PLUGIN_NAME.component" "$STAGING_DIR/au_payload/Library/Audio/Plug-Ins/Components/"
 
 echo "Staging Standalone App..."
 mkdir -p "$STAGING_DIR/app_payload/Applications"
-cp -R "$BUILD_DIR/Standalone/$PLUGIN_NAME.app" "$STAGING_DIR/app_payload/Applications/"
+cp -R "$BUILD_ROOT/Release/Standalone/$PLUGIN_NAME.app" "$STAGING_DIR/app_payload/Applications/"
 
 echo "Staging Content..."
 # Install to /Users/Shared/Wolf Instruments/Factory Presets

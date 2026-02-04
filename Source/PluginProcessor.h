@@ -10,6 +10,7 @@
 #include "SampleManager.h"
 #include "SynthEngine.h"
 #include <JuceHeader.h>
+#include <atomic>
 
 class HowlingWolvesAudioProcessor : public juce::AudioProcessor {
 public:
@@ -56,8 +57,18 @@ public:
   juce::MidiKeyboardState &getKeyboardState() { return keyboardState; }
   PresetManager &getPresetManager() { return presetManager; }
   HuntEngine &getHuntEngine() { return huntEngine; }
+
   MidiCapturer &getMidiCapturer() { return midiCapturer; }
   MidiProcessor &getMidiProcessor() { return midiProcessor; }
+
+  // Transport Control (Internal)
+  void setTransportPlaying(bool shouldPlay) { transportPlaying = shouldPlay; }
+  bool isTransportPlaying() const { return transportPlaying; }
+
+  // Metering Accessors
+  float getEqLow() const { return effectsProcessor.eqLow; }
+  float getEqMid() const { return effectsProcessor.eqMid; }
+  float getEqHigh() const { return effectsProcessor.eqHigh; }
 
   // Shared Resources for UI
   juce::AudioFormatManager formatManager;
@@ -80,15 +91,15 @@ public:
   // Let's go with: Processor has a lock-free FIFO. Editor reads from it to feed
   // VisualizerComponent. Actually, I'll just add `pushToVisualizer(buffer)`
   // which calls a hook if set.
-  std::function<void(const juce::AudioBuffer<float> &)> audioVisualizerHook;
+  // std::function<void(const juce::AudioBuffer<float> &)> audioVisualizerHook;
 
 private:
   //==============================================================================
   juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
   juce::AudioProcessorValueTreeState apvts;
 
-  SynthEngine synthEngine;
   SampleManager sampleManager;
+  SynthEngine synthEngine;
   juce::MidiKeyboardState keyboardState;
   PresetManager presetManager;
 
@@ -99,6 +110,8 @@ private:
   MidiProcessor midiProcessor;
   HuntEngine huntEngine;
   MidiCapturer midiCapturer;
+
+  std::atomic<bool> transportPlaying{false};
 
   //==============================================================================
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HowlingWolvesAudioProcessor)

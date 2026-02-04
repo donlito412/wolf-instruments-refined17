@@ -10,6 +10,10 @@ VisualizerComponent::~VisualizerComponent() { stopTimer(); }
 
 void VisualizerComponent::pushBuffer(const juce::AudioBuffer<float> &buffer) {
   if (buffer.getNumChannels() > 0) {
+    // Threshold to prevent noise from triggering visualizer
+    if (buffer.getMagnitude(0, 0, buffer.getNumSamples()) < 0.01f)
+      return;
+
     auto *channelData = buffer.getReadPointer(0);
     int numSamples = buffer.getNumSamples();
 

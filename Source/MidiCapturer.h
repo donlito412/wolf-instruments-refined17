@@ -24,10 +24,9 @@ public:
   juce::File saveToTempFile();
 
   void setRecording(bool shouldRecord);
-
-private:
   void setBpm(double bpm);
 
+private:
 private:
   juce::MidiMessageSequence sequence;
   double currentBpm = 120.0;

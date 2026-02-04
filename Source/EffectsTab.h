@@ -64,6 +64,9 @@ private:
       rSizeAtt, rDampAtt, rMixAtt, // rDecayAtt? (Missing)
       biteAtt;
 
+  std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> huntAtt,
+      bitcrushAtt;
+
   // Missing param connections will be left null or unconnected visually
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EffectsTab)
