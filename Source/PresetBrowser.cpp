@@ -1,5 +1,6 @@
 #include "PresetBrowser.h"
 #include "ModernCyberLookAndFeel.h"
+#include <set>
 
 PresetBrowser::PresetBrowser(PresetManager &pm) : presetManager(pm) {
   addAndMakeVisible(presetList);
@@ -25,9 +26,9 @@ PresetBrowser::PresetBrowser(PresetManager &pm) : presetManager(pm) {
 
   // Category Filter
   addAndMakeVisible(categoryFilter);
+  categories.add("All");
   categoryFilter.addItemList(categories, 1);
-  categoryFilter.setSelectedId(0,
-                               juce::dontSendNotification); // Default to None
+  categoryFilter.setSelectedId(1, juce::dontSendNotification); // Default to All
   categoryFilter.setTextWhenNothingSelected("Select Category...");
   // Match the panel style (Transparent to let panel color show through)
   categoryFilter.setColour(juce::ComboBox::backgroundColourId,
@@ -70,6 +71,7 @@ void PresetBrowser::resized() {
 
   searchBox.setBounds(
       topArea.removeFromTop(40).reduced(5, 5)); // 30px effective height
+
   categoryFilter.setBounds(topArea.removeFromTop(30).reduced(5, 0));
 
   area.reduce(5, 0);
@@ -130,6 +132,7 @@ void PresetBrowser::selectedRowsChanged(int) {}
 void PresetBrowser::refresh() {
   allPresetsInfo.clear();
   auto files = presetManager.getAllPresets();
+  std::set<juce::String> uniqueCategories;
 
   // Scan metadata
   for (const auto &file : files) {
@@ -150,12 +153,42 @@ void PresetBrowser::refresh() {
       if (parent != presetManager.getPresetFolder() &&
           parent != PresetManager::factoryDirectory) {
         category = parent.getFileName();
+        uniqueCategories.insert(category);
       }
     }
 
     allPresetsInfo.push_back({name, category});
     DBG("Preset: " + name + " | Category: " + category);
   }
+
+  // Rebuild categories list
+  categories.clear();
+  categories.add("All");
+  for (const auto &cat : uniqueCategories) {
+    categories.add(cat);
+  }
+
+  // Update ComboBox
+  auto currentId = categoryFilter.getSelectedId();
+  auto currentText = categoryFilter.getText();
+
+  categoryFilter.clear();
+  categoryFilter.addItemList(categories, 1);
+
+  // Restore selection by Text (IDs might change if list changes)
+  int idToSelect = 1; // Default to "All"
+
+  if (currentId > 0 && categories.contains(currentText)) {
+    // Find the new ID for this text
+    for (int i = 0; i < categories.size(); ++i) {
+      if (categories[i] == currentText) {
+        idToSelect = i + 1;
+        break;
+      }
+    }
+  }
+
+  categoryFilter.setSelectedId(idToSelect, juce::dontSendNotification);
 
   filterPresets();
 }

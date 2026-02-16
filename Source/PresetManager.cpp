@@ -17,6 +17,9 @@ const juce::String PresetManager::presetExtension{".wav"};
 const juce::File PresetManager::sharedDirectory{
     "/Users/Shared/Wolf Instruments"};
 
+const juce::File PresetManager::developmentDirectory{
+    "/Users/jonfreeze/Wolf Instruments/Music/Wolf Instruments/Presets"};
+
 PresetManager::PresetManager(juce::AudioProcessorValueTreeState &apvts,
                              SampleManager &sm)
     : valueTreeState(apvts), sampleManager(sm) {
@@ -145,6 +148,10 @@ juce::File PresetManager::getPresetFile(const juce::String &presetName) const {
   if (f.existsAsFile())
     return f;
 
+  f = findInRoot(developmentDirectory);
+  if (f.existsAsFile())
+    return f;
+
   return juce::File();
 }
 
@@ -191,6 +198,7 @@ juce::File PresetManager::getPresetFolder() const { return defaultDirectory; }
 
 juce::Array<juce::File> PresetManager::getAllPresets() const {
   juce::Array<juce::File> presets;
+  std::set<juce::String> loadedNames; // Track unique names
 
   auto options = juce::File::TypesOfFileToFind::findFiles;
 
@@ -204,17 +212,31 @@ juce::Array<juce::File> PresetManager::getAllPresets() const {
     auto allFiles = root.findChildFiles(options, true, "*"); // Scan everything
 
     for (const auto &file : allFiles) {
+      DBG("Scanning file: " + file.getFileName());
       if (file.getFileExtension().equalsIgnoreCase(presetExtension) ||
           file.getFileExtension().equalsIgnoreCase(".xml")) {
-        DBG("Found preset: " + file.getFullPathName());
-        presets.add(file);
+
+        // Deduplication: Only add if name not yet seen
+        auto name = file.getFileName();
+        if (loadedNames.find(name) == loadedNames.end()) {
+          DBG("Found preset: " + file.getFullPathName());
+          presets.add(file);
+          loadedNames.insert(name);
+        } else {
+          DBG("Skipping duplicate preset: " + name);
+        }
+      } else {
+        DBG("Skipping file (wrong extension): " + file.getFileName());
       }
     }
   };
 
+  // Order matters: First scan wins.
+  // We prioritize Installed/User locations over Development.
   scanRoot(defaultDirectory);
   scanRoot(sharedDirectory); // Check Shared folder (Installer location)
   scanRoot(factoryDirectory);
+  scanRoot(developmentDirectory); // Check Project folder (Development)
 
   return presets;
 }
