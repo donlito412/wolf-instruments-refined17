@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thank You | Wolf Instruments</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Outfit:wght@300;400;700;900&display=swap"
+        rel="stylesheet">
+    <style>
+        .success-hero {
+            padding: 150px 0;
+            text-align: center;
+            background: radial-gradient(circle at center, rgba(0, 217, 255, 0.1) 0%, transparent 70%);
+        }
+
+        .check-icon {
+            font-size: 5rem;
+            color: var(--primary-cyan);
+            margin-bottom: 30px;
+            filter: drop-shadow(0 0 20px rgba(0, 217, 255, 0.4));
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            max-width: 900px;
+            margin: 60px auto;
+        }
+
+        .download-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 40px;
+            transition: all 0.3s ease;
+        }
+
+        .download-card:hover {
+            border-color: var(--primary-cyan);
+            transform: translateY(-5px);
+        }
+
+        .os-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: var(--primary-cyan);
+            color: black;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .download-btn:hover {
+            transform: scale(1.05);
+            background: white;
+        }
+
+        .instructions {
+            max-width: 700px;
+            margin: 40px auto;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 30px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .instructions h3 {
+            color: var(--primary-cyan);
+            margin-bottom: 15px;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+            color: var(--text-grey);
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body class="bg-dark">
+    <div class="container success-hero">
+        <i class="fas fa-circle-check check-icon"></i>
+        <h1 class="headline">WELCOME TO THE HUNT</h1>
+        <p class="tagline">YOUR PURCHASE WAS SUCCESSFUL</p>
+        <p class="subheadline">Download your installers below and start creating.</p>
+
+        <div class="download-grid">
+            <!-- macOS -->
+            <div class="download-card">
+                <i class="fab fa-apple os-icon"></i>
+                <h2>macOS</h2>
+                <p>Apple Silicon (M1/M2/M3) & Intel</p>
+                <a href="https://github.com/donlito412/wolf-instruments-refined17/releases/latest/download/HowlingWolves-macOS-Installer.pkg"
+                    class="download-btn">
+                    <i class="fas fa-download"></i> Download PKG
+                </a>
+            </div>
+
+            <!-- Windows -->
+            <div class="download-card">
+                <i class="fab fa-windows os-icon"></i>
+                <h2>Windows</h2>
+                <p>Windows 10 / 11 (64-bit)</p>
+                <a href="https://github.com/donlito412/wolf-instruments-refined17/releases/latest/download/HowlingWolves-Windows-Installer.exe"
+                    class="download-btn">
+                    <i class="fas fa-download"></i> Download EXE
+                </a>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>Installation Guide</h3>
+            <ol>
+                <li>Download the installer for your operating system.</li>
+                <li>Run the installer and follow the on-screen prompts.</li>
+                <li>Open your DAW (Logic, Ableton, FL Studio, etc.) and rescan your plugins.</li>
+                <li>Look for "Wolf Instruments" under your VST3/AU list.</li>
+            </ol>
+            <p style="margin-top: 20px; font-size: 0.9rem; opacity: 0.6;">Need help? Contact <a
+                    href="mailto:support@wolfinstruments.com"
+                    style="color: var(--primary-cyan);">support@wolfinstruments.com</a></p>
+        </div>
+
+        <a href="index.html"
+            style="color: var(--text-grey); text-decoration: none; font-size: 0.9rem; margin-top: 40px; display: inline-block;">
+            <i class="fas fa-arrow-left"></i> Back to Homepage
+        </a>
+    </div>
+</body>
+
+</html>

@@ -152,11 +152,77 @@
         </div>
     </section>
 
-    <!-- AUDIO DEMO (Optional section for future use) -->
+    <!-- AUDIO DEMO -->
     <section id="demo" class="demo-section">
         <div class="container">
             <h2 class="section-title">HEAR THE HUNT</h2>
-            <p class="section-subtitle">Sound demos coming soon</p>
+            <p class="section-subtitle">Experience the raw power of Howling Wolves</p>
+
+            <div class="audio-grid">
+                <!-- Midnight Keys -->
+                <div class="audio-card fade-in">
+                    <div class="audio-info">
+                        <div class="audio-title">Midnight Keys</div>
+                        <div class="audio-category">Keys</div>
+                    </div>
+                    <div class="player-controls">
+                        <button class="play-pause-btn" data-src="audio/midnight_keys.wav">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="player-progress-container">
+                            <div class="player-progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Night Stalker -->
+                <div class="audio-card fade-in">
+                    <div class="audio-info">
+                        <div class="audio-title">Night Stalker</div>
+                        <div class="audio-category">Bass</div>
+                    </div>
+                    <div class="player-controls">
+                        <button class="play-pause-btn" data-src="audio/night_stalker.wav">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="player-progress-container">
+                            <div class="player-progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graveyard 808 -->
+                <div class="audio-card fade-in">
+                    <div class="audio-info">
+                        <div class="audio-title">Graveyard 808</div>
+                        <div class="audio-category">Bass</div>
+                    </div>
+                    <div class="player-controls">
+                        <button class="play-pause-btn" data-src="audio/graveyard_808.wav">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="player-progress-container">
+                            <div class="player-progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acoustic Piano -->
+                <div class="audio-card fade-in">
+                    <div class="audio-info">
+                        <div class="audio-title">Acoustic Piano</div>
+                        <div class="audio-category">Keys</div>
+                    </div>
+                    <div class="player-controls">
+                        <button class="play-pause-btn" data-src="audio/acoustic_piano.wav">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="player-progress-container">
+                            <div class="player-progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
@@ -199,9 +265,53 @@
             });
         }, { threshold: 0.1 });
 
-        document.querySelectorAll('.feature-card, .gallery-item, .pricing-card').forEach(el => {
+        document.querySelectorAll('.feature-card, .gallery-item, .pricing-card, .audio-card').forEach(el => {
             el.classList.add('fade-in');
             observer.observe(el);
+        });
+
+        // Audio Player Logic
+        let currentAudio = null;
+        let currentBtn = null;
+
+        document.querySelectorAll('.play-pause-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const src = this.getAttribute('data-src');
+                const progressBar = this.parentElement.querySelector('.player-progress-bar');
+                const icon = this.querySelector('i');
+
+                if (currentAudio && currentAudio.src.includes(src)) {
+                    if (currentAudio.paused) {
+                        currentAudio.play();
+                        icon.className = 'fas fa-pause';
+                    } else {
+                        currentAudio.pause();
+                        icon.className = 'fas fa-play';
+                    }
+                } else {
+                    if (currentAudio) {
+                        currentAudio.pause();
+                        currentBtn.querySelector('i').className = 'fas fa-play';
+                        currentBtn.parentElement.querySelector('.player-progress-bar').style.width = '0%';
+                    }
+
+                    currentAudio = new Audio(src);
+                    currentBtn = btn;
+
+                    currentAudio.play();
+                    icon.className = 'fas fa-pause';
+
+                    currentAudio.addEventListener('timeupdate', () => {
+                        const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
+                        progressBar.style.width = progress + '%';
+                    });
+
+                    currentAudio.addEventListener('ended', () => {
+                        icon.className = 'fas fa-play';
+                        progressBar.style.width = '0%';
+                    });
+                }
+            });
         });
     </script>
 
