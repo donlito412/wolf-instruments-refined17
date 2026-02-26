@@ -19,7 +19,8 @@ void MidiCapturer::setBpm(double bpm) { currentBpm = bpm; }
 
 void MidiCapturer::setRecording(bool shouldRecord) {
   if (shouldRecord) {
-    clear(); // Clear on start
+    clear(); // Clear on start resets currentSampleTime to 0.0
+    currentSampleTime = 0.0; // explicit safety
   }
   recording = shouldRecord;
 }
@@ -105,6 +106,7 @@ juce::File MidiCapturer::saveToTempFile() {
   juce::FileOutputStream stream(tempFile);
   if (stream.openedOk()) {
     midiFile.writeTo(stream);
+    stream.flush(); // CRITICAL: Force OS flush before drag initiates
   }
 
   lastFile = tempFile;

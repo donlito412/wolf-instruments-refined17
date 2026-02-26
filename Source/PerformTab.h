@@ -1,6 +1,6 @@
 #pragma once
 #include "ObsidianLookAndFeel.h"
-#include "PianoRollComponent.h"
+#include "MidiDragComponent.h"
 #include "PluginProcessor.h"
 #include <JuceHeader.h>
 
@@ -13,8 +13,6 @@ public:
 
   void paint(juce::Graphics &g) override;
   void resized() override;
-  void mouseDown(const juce::MouseEvent &e) override;
-  void mouseDrag(const juce::MouseEvent &e) override;
   void buttonClicked(juce::Button *b) override {}
 
   void parameterChanged(const juce::String &parameterID,
@@ -44,15 +42,10 @@ private:
   void setupLabel(juce::Label &l, const juce::String &t);
 
   // --- Panels ---
-  juce::Rectangle<int> transportPanel, gridPanel, voicingPanel, spreadPanel,
-      controlsPanel;
+  juce::Rectangle<int> transportPanel, voicingPanel, spreadPanel, controlsPanel;
 
   // Transport
-  juce::TextButton playBtn, stopBtn, recBtn;
-
-  // Grid
-  // (Removed Title)
-  PianoRollComponent pianoRoll;
+  MidiDragComponent midiDrag{audioProcessor};
 
   // UI State for Transient Menus
   bool showChordMenu = false;

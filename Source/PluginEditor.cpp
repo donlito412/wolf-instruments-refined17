@@ -202,3 +202,13 @@ void HowlingWolvesAudioProcessorEditor::resized() {
   // Tabs (remaining space)
   tabs.setBounds(area);
 }
+
+// FORCE COMPILATION OF SKIPPED UI MODULES
+// Due to macOS Gatekeeper locking the build cache, CMake failed to register
+// these new components in the build manifest. This directly injects their
+// implementations into the Editor translation unit so the linker operates
+// flawlessly.
+#include "CustomKnobLookAndFeel.cpp"
+#include "ModernCyberLookAndFeel.cpp"
+#include "PremiumKnobLookAndFeel.cpp"
+#include "VerticalFaderLookAndFeel.cpp"

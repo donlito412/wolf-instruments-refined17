@@ -2,23 +2,8 @@
 #include "PianoRollComponent.h"
 
 PerformTab::PerformTab(HowlingWolvesAudioProcessor &p)
-    : audioProcessor(p), pianoRoll(p) {
-  addAndMakeVisible(pianoRoll);
-
-  // (Quantize label removed - non-functional)
-
-  // Using Unicode shapes for Transport Icons
-  setupButton(playBtn, juce::CharPointer_UTF8("\xe2\x96\xb6"),
-              juce::Colours::cyan); // Play Triangle
-  playBtn.setTooltip("Start Playback");
-
-  setupButton(stopBtn, juce::CharPointer_UTF8("\xe2\x96\xa0"),
-              juce::Colours::grey); // Stop Square
-  stopBtn.setTooltip("Stop Playback");
-
-  setupButton(recBtn, juce::CharPointer_UTF8("\xe2\x97\x8f"),
-              juce::Colours::red); // Rec Circle
-  recBtn.setTooltip("Record MIDI Output");
+    : audioProcessor(p) {
+  addAndMakeVisible(midiDrag);
 
   // --- 2. GRID (NO TITLE) ---
   // setupLabel(arpTitle, "ARPEGGIATOR GRID"); // Removed
@@ -61,11 +46,6 @@ PerformTab::PerformTab(HowlingWolvesAudioProcessor &p)
   setupComboBox(chordModeSelector, "chordMode", chordModeAtt);
   chordModeSelector.setTooltip("Select Chord Generation Mode");
 
-  // Rec Button Logic
-  recBtn.onClick = [this] {
-    bool isRec = recBtn.getToggleState();
-    audioProcessor.getMidiCapturer().setRecording(isRec);
-  };
 
   // Chord Button Logic (Popup Menu)
   // Fix: Button should NOT act as a toggle switch itself.
@@ -153,48 +133,7 @@ PerformTab::PerformTab(HowlingWolvesAudioProcessor &p)
   // chordModeSelector.onChange...
   // arpModeSelector.onChange...
 
-  // Initial State: Hide menus
-  chordModeSelector.setVisible(false);
-  arpModeSelector.setVisible(false);
-
-  // Play Button Logic
-  playBtn.onClick = [this] {
-    bool isPlaying = playBtn.getToggleState();
-    audioProcessor.setTransportPlaying(isPlaying);
-    if (isPlaying) {
-      stopBtn.setToggleState(false, juce::dontSendNotification);
-    }
-  };
-
-  // Stop Button Logic
-  stopBtn.onClick = [this] {
-    bool isStopped = stopBtn.getToggleState();
-    if (isStopped) {
-      playBtn.setToggleState(false, juce::dontSendNotification);
-      audioProcessor.setTransportPlaying(false);
-      audioProcessor.getMidiProcessor().reset();
-    }
-  };
-
-  // Record Button Logic - MIDI Capture
-  recBtn.onClick = [this] {
-    bool isRecording = recBtn.getToggleState();
-
-    if (isRecording) {
-      // Start MIDI recording
-      audioProcessor.getMidiCapturer().startRecording();
-    } else {
-      // Stop and save recording
-      audioProcessor.getMidiCapturer().stopRecording();
-      juce::File midiFile = audioProcessor.getMidiCapturer().saveToTempFile();
-
-      if (midiFile.existsAsFile()) {
-        juce::AlertWindow::showMessageBoxAsync(
-            juce::AlertWindow::InfoIcon, "MIDI Recorded",
-            "MIDI saved to: " + midiFile.getFullPathName());
-      }
-    }
-  };
+  // Removed old ComboBox and Play/Stop/Rec Button logic
 
   // Add parameter listeners
   audioProcessor.getAPVTS().addParameterListener("chordHold", this);
@@ -223,10 +162,6 @@ PerformTab::PerformTab(HowlingWolvesAudioProcessor &p)
 
 PerformTab::~PerformTab() {
   // CRITICAL: Clear all onClick callbacks that capture [this]
-  // These can fire during/after destruction causing crashes
-  playBtn.onClick = nullptr;
-  stopBtn.onClick = nullptr;
-  recBtn.onClick = nullptr;
   chordHoldBtn.onClick = nullptr;
   arpSyncBtn.onClick = nullptr;
 
@@ -335,95 +270,28 @@ void PerformTab::paint(juce::Graphics &g) {
   if (lnf) {
     // Draw Obsidian Glass Panels
     lnf->drawGlassPanel(g, transportPanel);
-    lnf->drawGlassPanel(g, gridPanel);
     lnf->drawGlassPanel(g, voicingPanel);
     lnf->drawGlassPanel(g, spreadPanel);
     lnf->drawGlassPanel(g, controlsPanel);
   }
-  // Piano roll drawing removed - now handled by PianoRollComponent
 }
 
-void PerformTab::mouseDown(const juce::MouseEvent &e) {
-  // Check if click is in Grid
-  auto matrixArea = gridPanel.reduced(2);
 
-  // Must account for Keys width (30) defined in drawPianoRoll
-  int keysWidth = 30;
-
-  if (matrixArea.contains(e.getPosition())) {
-    // If click is in keys area, maybe audition note? For now ignore or handle
-    if (e.getPosition().x < matrixArea.getX() + keysWidth)
-      return;
-
-    auto gridArea = matrixArea;
-    gridArea.removeFromLeft(keysWidth);
-
-    if (gridArea.contains(e.getPosition())) {
-      int numSteps = 16;
-      int numRows = 8;
-      float stepW = (float)gridArea.getWidth() / (float)numSteps;
-      float noteH = (float)gridArea.getHeight() / (float)numRows;
-
-      int x = (int)((e.getPosition().x - gridArea.getX()) / stepW);
-      int y = (int)((e.getPosition().y - gridArea.getY()) / noteH);
-
-      // Safety
-      if (x < 0)
-        x = 0;
-      if (x > 15)
-        x = 15;
-      if (y < 0)
-        y = 0;
-      if (y > 7)
-        y = 7;
-
-      auto &arp = audioProcessor.getMidiProcessor().getArp();
-      int currentVal = arp.getRhythmStep(x);
-
-      if (currentVal == y) {
-        arp.setRhythmStep(x, -1); // Clear
-      } else {
-        arp.setRhythmStep(x, y); // Set Pitch Index
-      }
-      repaint(gridPanel);
-    }
-  }
-}
-
-void PerformTab::mouseDrag(const juce::MouseEvent &e) {
-  // Check if dragging from Transport Area (specifically Rec button or Label)
-  if (transportPanel.contains(e.getPosition())) {
-    // If Recording is stopped, we can drag
-    if (!recBtn.getToggleState()) {
-      auto f = audioProcessor.getMidiCapturer().saveToTempFile();
-      if (f.exists()) {
-        juce::StringArray files;
-        files.add(f.getFullPathName());
-        juce::DragAndDropContainer::performExternalDragDropOfFiles(files, true);
-      }
-    }
-  }
-}
 
 // (Removed duplicate resized and drawArpMatrix)
 void PerformTab::resized() {
   auto area = getLocalBounds().reduced(15);
 
-  // Transport Bar
-  transportPanel = area.removeFromTop(50).reduced(5);
+  // Transport Bar for MIDI Drag
+  transportPanel = area.removeFromTop(80).reduced(5);
   auto tArea = transportPanel.reduced(10);
+  
+  // Center the MidiDragComponent
+  midiDrag.setBounds(tArea.withSizeKeepingCentre(120, 40));
 
-  int btnW = 50;
-  playBtn.setBounds(tArea.removeFromLeft(btnW).reduced(2));
-  stopBtn.setBounds(tArea.removeFromLeft(btnW).reduced(2));
-  recBtn.setBounds(tArea.removeFromLeft(btnW).reduced(2));
-
-  // Grid Section with Piano Roll
+  // The rest of the space is empty since we removed the piano roll.
+  // We can just leave it empty or expand the bottom modules.
   area.removeFromTop(10);
-  gridPanel = area.removeFromTop((int)(area.getHeight() * 0.55f)).reduced(5);
-
-  // Layout piano roll component inside grid panel
-  pianoRoll.setBounds(gridPanel);
 
   // Bottom Modules
   auto bottomArea = area.reduced(0, 10);

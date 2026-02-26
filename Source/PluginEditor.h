@@ -21,7 +21,8 @@
 
 //==============================================================================
 class HowlingWolvesAudioProcessorEditor : public juce::AudioProcessorEditor,
-                                          public juce::Timer {
+                                          public juce::Timer,
+                                          public juce::DragAndDropContainer {
 public:
   HowlingWolvesAudioProcessorEditor(HowlingWolvesAudioProcessor &);
   ~HowlingWolvesAudioProcessorEditor() override;

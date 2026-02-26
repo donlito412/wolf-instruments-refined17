@@ -1,0 +1,3 @@
+/Users/jonfreeze/Wolf Instruments/build_v19_test/_deps/juce-subbuild/CMakeFiles/juce-populate.dir
+/Users/jonfreeze/Wolf Instruments/build_v19_test/_deps/juce-subbuild/CMakeFiles/edit_cache.dir
+/Users/jonfreeze/Wolf Instruments/build_v19_test/_deps/juce-subbuild/CMakeFiles/rebuild_cache.dir
