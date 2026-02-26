@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, windows-latest]
+        os: [macos-latest, windows-latest]
 
     steps:
     - name: Checkout code
@@ -112,7 +112,7 @@ jobs:
       - name: Download Artifacts (macOS)
         uses: actions/download-artifact@v4
         with:
-          name: HowlingWolves-macos-13
+          name: HowlingWolves-macos-latest
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
