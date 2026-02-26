@@ -1,2 +1,0 @@
-/Users/jonfreeze/Wolf Instruments/build_v19/CMakeFiles/CMakeScratch/TryCompile-F3zcOd/CMakeFiles/cmTC_11a72.dir
-/Users/jonfreeze/Wolf Instruments/build_v19/CMakeFiles/CMakeScratch/TryCompile-F3zcOd/CMakeFiles/ALL_BUILD.dir

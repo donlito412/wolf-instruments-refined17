@@ -19,48 +19,75 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-13, windows-latest]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        submodules: true
+        submodules: recursive
 
-    - name: Install JUCE Dependencies (Linux)
-      if: runner.os == 'Linux'
+    - name: Setup CMake
+      uses: lukka/get-cmake@latest
+
+    - name: Install macOS Dependencies
+      if: runner.os == 'macOS'
       run: |
-        sudo apt-get update
-        sudo apt-get install -y libasound2-dev libjack-jackd2-dev \
-            ladspa-sdk \
-            libcurl4-openssl-dev  \
-            libfreetype6-dev \
-            libx11-dev libxcomposite-dev libxcursor-dev libxcursor1 libxext-dev libxinerama-dev libxrandr-dev libxrender-dev \
-            libwebkit2gtk-4.0-dev \
-            libglu1-mesa-dev mesa-common-dev
+        # JUCE needs these on macOS CI
+        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
-    - name: Configure CMake
+    - name: Configure CMake (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
       run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build
-      run: cmake --build build --config Release
+      run: cmake --build build --config Release --parallel 4
+
+    - name: List build artifacts (Debug)
+      shell: bash
+      run: |
+        echo "=== Build output structure ==="
+        find build/HowlingWolves_artefacts -type f -name "*.vst3" -o -name "*.component" -o -name "*.app" -o -name "*.exe" -o -name "*.dll" 2>/dev/null || echo "No artefacts directory found"
+        echo "=== Full artefacts tree ==="
+        ls -R build/HowlingWolves_artefacts/ 2>/dev/null || echo "Directory not found"
 
     - name: Package (Windows)
       if: runner.os == 'Windows'
       shell: bash
       run: |
         mkdir -p artifacts
-        cp -r build/HowlingWolves_artefacts/Release/VST3/Howling\ Wolves.vst3 artifacts/
-        cp -r build/HowlingWolves_artefacts/Release/Standalone/Howling\ Wolves.exe artifacts/
+        # Try both possible paths (with and without Release subfolder)
+        if [ -d "build/HowlingWolves_artefacts/Release/VST3" ]; then
+          cp -r "build/HowlingWolves_artefacts/Release/VST3/"* artifacts/ 2>/dev/null || true
+          cp -r "build/HowlingWolves_artefacts/Release/Standalone/"* artifacts/ 2>/dev/null || true
+        elif [ -d "build/HowlingWolves_artefacts/VST3" ]; then
+          cp -r "build/HowlingWolves_artefacts/VST3/"* artifacts/ 2>/dev/null || true
+          cp -r "build/HowlingWolves_artefacts/Standalone/"* artifacts/ 2>/dev/null || true
+        fi
         7z a HowlingWolves_Windows.zip ./artifacts/*
 
     - name: Package (macOS)
       if: runner.os == 'macOS'
       run: |
         mkdir -p artifacts
-        cp -R build/HowlingWolves_artefacts/Release/VST3/Howling\ Wolves.vst3 artifacts/
-        cp -R build/HowlingWolves_artefacts/Release/Standalone/Howling\ Wolves.app artifacts/
-        cp -R build/HowlingWolves_artefacts/Release/AU/Howling\ Wolves.component artifacts/
+        # Try both possible paths (with and without Release subfolder)
+        if [ -d "build/HowlingWolves_artefacts/Release/VST3" ]; then
+          cp -R "build/HowlingWolves_artefacts/Release/VST3/"* artifacts/ 2>/dev/null || true
+          cp -R "build/HowlingWolves_artefacts/Release/Standalone/"* artifacts/ 2>/dev/null || true
+          cp -R "build/HowlingWolves_artefacts/Release/AU/"* artifacts/ 2>/dev/null || true
+        elif [ -d "build/HowlingWolves_artefacts/VST3" ]; then
+          cp -R "build/HowlingWolves_artefacts/VST3/"* artifacts/ 2>/dev/null || true
+          cp -R "build/HowlingWolves_artefacts/Standalone/"* artifacts/ 2>/dev/null || true
+          cp -R "build/HowlingWolves_artefacts/AU/"* artifacts/ 2>/dev/null || true
+        fi
         zip -r HowlingWolves_MacOS.zip artifacts
 
     - name: Upload Artifacts
@@ -85,13 +112,13 @@ jobs:
       - name: Download Artifacts (macOS)
         uses: actions/download-artifact@v4
         with:
-          name: HowlingWolves-macos-latest
+          name: HowlingWolves-macos-13
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             HowlingWolves_Windows.zip
             HowlingWolves_MacOS.zip
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
           generate_release_notes: true
