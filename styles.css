@@ -43,14 +43,19 @@ body {
 }
 
 /* ─── TYPOGRAPHY ─────────────────────── */
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
     font-family: var(--font-head);
     text-transform: uppercase;
     letter-spacing: 2px;
     line-height: 1.2;
 }
 
-h1 { font-weight: 900; }
+h1 {
+    font-weight: 900;
+}
 
 h2 {
     font-weight: 700;
@@ -105,21 +110,17 @@ h2 {
 }
 
 .nav-logo {
-    display: flex;
-    align-items: center;
+    font-family: var(--font-head);
+    font-weight: 900;
+    font-size: 1.3rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--text-white);
     text-decoration: none;
-    height: 100%;
 }
 
-.nav-logo img {
-    max-height: 40px;
-    width: auto;
-    object-fit: contain;
-    transition: transform var(--transition);
-}
-
-.nav-logo:hover img {
-    transform: scale(1.05);
+.nav-logo span {
+    color: var(--accent-gold);
 }
 
 .nav-links {
@@ -574,6 +575,7 @@ h2 {
         opacity: 0;
         transform: translateY(30px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -581,9 +583,12 @@ h2 {
 }
 
 @keyframes scrollBounce {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translateX(-50%) translateY(0);
     }
+
     50% {
         transform: translateX(-50%) translateY(10px);
     }
@@ -602,13 +607,19 @@ h2 {
 }
 
 /* Stagger product cards */
-.product-card.fade-in:nth-child(2) { transition-delay: 0.1s; }
-.product-card.fade-in:nth-child(3) { transition-delay: 0.2s; }
+.product-card.fade-in:nth-child(2) {
+    transition-delay: 0.1s;
+}
+
+.product-card.fade-in:nth-child(3) {
+    transition-delay: 0.2s;
+}
 
 /* ─── RESPONSIVE ─────────────────────── */
 
 /* Tablet */
 @media (max-width: 1024px) {
+
     .featured-grid,
     .product-grid {
         grid-template-columns: repeat(2, 1fr);
