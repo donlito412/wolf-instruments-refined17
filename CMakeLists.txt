@@ -88,6 +88,10 @@ target_sources(HowlingWolves
         Source/ModernCyberLookAndFeel.h
         Source/HuntEngine.cpp
         Source/HuntEngine.h
+        Source/LicenseManager.cpp
+        Source/LicenseManager.h
+        Source/LicenseActivationOverlay.cpp
+        Source/LicenseActivationOverlay.h
 )
 
 # Link against JUCE libraries
@@ -102,6 +106,7 @@ target_link_libraries(HowlingWolves
         juce::juce_gui_basics
         juce::juce_gui_extra
         juce::juce_dsp
+        juce::juce_cryptography
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

@@ -4,6 +4,7 @@
 #include "FilterProcessor.h"
 #include "HuntEngine.h"
 #include "LFOProcessor.h"
+#include "LicenseManager.h"
 #include "MidiCapturer.h"
 #include "MidiProcessor.h"
 #include "PresetManager.h"
@@ -70,6 +71,11 @@ public:
   float getEqMid() const { return effectsProcessor.eqMid; }
   float getEqHigh() const { return effectsProcessor.eqHigh; }
 
+  // License and Security
+  LicenseManager &getLicenseManager() { return licenseManager; }
+  bool checkLicenseValid() const { return isLicenseValid; }
+  void setLicenseValid(bool valid) { isLicenseValid = valid; }
+
   // Shared Resources for UI
   juce::AudioFormatManager formatManager;
   juce::AudioThumbnailCache thumbCache{512};
@@ -114,6 +120,10 @@ private:
   std::atomic<bool> transportPlaying{false};
   std::atomic<float> internalBPM{120.0f};
 
+  LicenseManager licenseManager;
+  std::atomic<bool> isLicenseValid{false};
+
   //==============================================================================
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(HowlingWolvesAudioProcessor)
 };

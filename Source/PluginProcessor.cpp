@@ -14,6 +14,9 @@ HowlingWolvesAudioProcessor::HowlingWolvesAudioProcessor()
   formatManager.registerBasicFormats();
   // Load initial samples
   sampleManager.loadSamples();
+
+  // Load saved license from disk on plugin startup
+  isLicenseValid.store(licenseManager.loadSavedLicense());
 }
 
 HowlingWolvesAudioProcessor::~HowlingWolvesAudioProcessor() {
@@ -111,6 +114,11 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 
   // Clear the buffer to prevent static/garbage noise
   buffer.clear();
+
+  // --- AUDIO PROTECTION: BYPASS IF UNLICENSED ---
+  if (!isLicenseValid.load()) {
+    return; // Output pure silence
+  }
 
   // --- 0. Transport Logic (Host vs Internal) ---
   juce::AudioPlayHead *playHead = getPlayHead();

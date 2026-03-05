@@ -126,7 +126,21 @@ HowlingWolvesAudioProcessorEditor::HowlingWolvesAudioProcessorEditor(
     presetBrowser.setVisible(false);
   };
 
-  // Force initial layout and paint to prevent stall
+  // Setup License Overlay
+  if (!audioProcessor.checkLicenseValid()) {
+    licenseOverlay = std::make_unique<LicenseActivationOverlay>(
+        audioProcessor.getLicenseManager(), [this]() {
+          // On Success:
+          audioProcessor.setLicenseValid(true);
+          if (licenseOverlay != nullptr) {
+            licenseOverlay->setVisible(false);
+          }
+        });
+    addChildComponent(licenseOverlay.get());
+    licenseOverlay->setVisible(true);
+    licenseOverlay->toFront(true);
+  }
+
   // Force initial layout and paint to prevent stall
   resized();
   repaint();
@@ -201,6 +215,11 @@ void HowlingWolvesAudioProcessorEditor::resized() {
 
   // Tabs (remaining space)
   tabs.setBounds(area);
+
+  // License Overlay (Top Most, Full Screen)
+  if (licenseOverlay != nullptr && licenseOverlay->isVisible()) {
+    licenseOverlay->setBounds(getLocalBounds());
+  }
 }
 
 // FORCE COMPILATION OF SKIPPED UI MODULES

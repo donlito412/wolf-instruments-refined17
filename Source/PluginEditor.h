@@ -2,6 +2,7 @@
 
 // #include "DrumTab.h" // Added - DISABLED
 #include "EffectsTab.h"
+#include "LicenseActivationOverlay.h"
 #include "ModulateTab.h"
 #include "ObsidianLookAndFeel.h"
 #include "PerformTab.h"
@@ -64,7 +65,10 @@ private:
 
   // Drum Tab (New)
   // Drum Tab (New)
+  // Drum Tab (New)
   // DrumTab drumTab;
+
+  std::unique_ptr<LicenseActivationOverlay> licenseOverlay;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
       HowlingWolvesAudioProcessorEditor)
