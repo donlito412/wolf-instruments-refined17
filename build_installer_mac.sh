@@ -1,4 +1,6 @@
 #!/bin/bash
+set -ex
+
 PLUGIN_NAME="Howling Wolves"
 PLUGIN_VERSION="1.0.19"
 IDENTIFIER="com.donlito412.howlingwolves"
@@ -12,12 +14,19 @@ mkdir -p "$STAGING_DIR/au_payload/Library/Audio/Plug-Ins/Components"
 mkdir -p "$STAGING_DIR/content_payload/Users/Shared/Wolf Instruments"
 mkdir -p "$STAGING_DIR/scripts"
 
+ls -R "$BUILD_ROOT" || true
+
 if [ -d "$BUILD_ROOT/Release/VST3" ]; then
-    cp -R "$BUILD_ROOT/Release/VST3/"* "$STAGING_DIR/vst3_payload/Library/Audio/Plug-Ins/VST3/" 2>/dev/null || true
-    cp -R "$BUILD_ROOT/Release/AU/"* "$STAGING_DIR/au_payload/Library/Audio/Plug-Ins/Components/" 2>/dev/null || true
+    echo "Found Release/VST3"
+    cp -R "$BUILD_ROOT/Release/VST3/"* "$STAGING_DIR/vst3_payload/Library/Audio/Plug-Ins/VST3/" || true
+    cp -R "$BUILD_ROOT/Release/AU/"* "$STAGING_DIR/au_payload/Library/Audio/Plug-Ins/Components/" || true
 elif [ -d "$BUILD_ROOT/VST3" ]; then
-    cp -R "$BUILD_ROOT/VST3/"* "$STAGING_DIR/vst3_payload/Library/Audio/Plug-Ins/VST3/" 2>/dev/null || true
-    cp -R "$BUILD_ROOT/AU/"* "$STAGING_DIR/au_payload/Library/Audio/Plug-Ins/Components/" 2>/dev/null || true
+    echo "Found VST3"
+    cp -R "$BUILD_ROOT/VST3/"* "$STAGING_DIR/vst3_payload/Library/Audio/Plug-Ins/VST3/" || true
+    cp -R "$BUILD_ROOT/AU/"* "$STAGING_DIR/au_payload/Library/Audio/Plug-Ins/Components/" || true
+else
+    echo "ERROR: COULD NOT FIND BUILT VST3 DIRECTORIES!"
+    exit 1
 fi
 
 cat <<'EOT' > "$STAGING_DIR/scripts/postinstall"
@@ -36,3 +45,5 @@ pkgbuild --root "$STAGING_DIR/content_payload" --identifier "$IDENTIFIER.content
 
 productbuild --synthesize --package "$STAGING_DIR/vst3.pkg" --package "$STAGING_DIR/au.pkg" --package "$STAGING_DIR/content.pkg" "$STAGING_DIR/distribution.xml"
 productbuild --distribution "$STAGING_DIR/distribution.xml" --package-path "$STAGING_DIR" "$OUTPUT_DIR/HowlingWolves_Mac_Installer.pkg"
+
+ls -la "$OUTPUT_DIR"
