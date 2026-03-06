@@ -217,7 +217,7 @@ void HowlingWolvesAudioProcessorEditor::resized() {
   tabs.setBounds(area);
 
   // License Overlay (Top Most, Full Screen)
-  if (licenseOverlay != nullptr && licenseOverlay->isVisible()) {
+  if (licenseOverlay != nullptr) {
     licenseOverlay->setBounds(getLocalBounds());
   }
 }
