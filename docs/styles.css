@@ -2004,3 +2004,335 @@ h2 {
         height: 40px;
     }
 }
+
+/* ═══════════════════════════════════════════════ */
+/* BUNDLES PAGE                                    */
+/* ═══════════════════════════════════════════════ */
+
+.bundles-page {
+    padding: 4rem 0 6rem;
+    background: var(--bg-deep);
+}
+
+.bundles-intro {
+    font-size: 1rem;
+    color: var(--text-muted);
+    max-width: 640px;
+    margin-bottom: 3rem;
+    line-height: 1.7;
+}
+
+/* ─── Bundle Page Card ─────────────────────────── */
+.bundle-page-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    position: relative;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.bundle-page-card:hover {
+    border-color: var(--border-gold);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+
+.bundle-page-card--featured {
+    border-color: rgba(0, 217, 255, 0.3);
+    box-shadow: 0 0 40px rgba(0, 217, 255, 0.07);
+}
+
+.bundle-page-card--featured:hover {
+    box-shadow: 0 8px 50px rgba(0, 217, 255, 0.18);
+}
+
+.bpc-featured-label {
+    background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-light));
+    color: #0a0a0f;
+    font-family: var(--font-head);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0.4rem 1.25rem;
+    display: inline-block;
+}
+
+/* ─── Header (title + pricing side by side) ─────── */
+.bpc-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2rem;
+    padding: 2rem 2rem 1.5rem;
+    flex-wrap: wrap;
+}
+
+.bpc-title-block {
+    flex: 1;
+    min-width: 220px;
+}
+
+.bpc-tag {
+    display: inline-block;
+    font-family: var(--font-head);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: rgba(0, 217, 255, 0.12);
+    color: var(--accent-gold);
+    border: 1px solid rgba(0, 217, 255, 0.2);
+    padding: 0.25rem 0.65rem;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+}
+
+.bpc-tag--blue {
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.2);
+}
+
+.bpc-tag--gold {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.2);
+}
+
+.bpc-tag--red {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.bpc-title {
+    font-family: var(--font-head);
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+}
+
+.bpc-desc {
+    font-size: 0.92rem;
+    color: var(--text-muted);
+    line-height: 1.65;
+    max-width: 480px;
+}
+
+/* ─── Pricing block ─────────────────────────────── */
+.bpc-pricing {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    min-width: 160px;
+}
+
+.bpc-was {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bpc-was-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: var(--font-head);
+}
+
+.bpc-was-price {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    text-decoration: line-through;
+}
+
+.bpc-price-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.bpc-price {
+    font-family: var(--font-head);
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: var(--text-white);
+    line-height: 1;
+}
+
+.bpc-price .currency {
+    font-size: 1.1rem;
+    font-weight: 600;
+    vertical-align: super;
+}
+
+.bpc-save-badge {
+    background: rgba(0, 217, 255, 0.12);
+    color: var(--accent-gold);
+    border: 1px solid rgba(0, 217, 255, 0.25);
+    font-family: var(--font-head);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+.bpc-save-badge--gold {
+    background: rgba(251, 191, 36, 0.12);
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.25);
+}
+
+/* ─── Breakdown table ───────────────────────────── */
+.bpc-breakdown {
+    border-top: 1px solid var(--border-subtle);
+    padding: 1.5rem 2rem;
+}
+
+.bpc-breakdown-title {
+    font-family: var(--font-head);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+}
+
+.bpc-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.bpc-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.bpc-item:last-child {
+    border-bottom: none;
+}
+
+.bpc-item-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    flex: 1;
+}
+
+.bpc-item-badge {
+    font-family: var(--font-head);
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+.bpc-item-badge--gold {
+    background: rgba(251, 191, 36, 0.1);
+    color: #fbbf24;
+}
+
+.bpc-item-name {
+    font-family: var(--font-head);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-white);
+}
+
+.bpc-item-desc {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    width: 100%;
+    margin-top: -0.2rem;
+}
+
+.bpc-item-price {
+    font-family: var(--font-head);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* Total row */
+.bpc-item--total {
+    padding-top: 1rem;
+    margin-top: 0.25rem;
+}
+
+.bpc-item--total .bpc-item-name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-white);
+}
+
+.bpc-item-price--bundle {
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: var(--accent-gold);
+}
+
+/* ─── Responsive ────────────────────────────────── */
+@media (max-width: 768px) {
+    .bpc-header {
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .bpc-pricing {
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .bpc-price-row {
+        justify-content: flex-start;
+    }
+
+    .bpc-title {
+        font-size: 1.4rem;
+    }
+
+    .bpc-breakdown {
+        padding: 1.25rem 1.25rem;
+    }
+
+    .bpc-header {
+        padding: 1.5rem 1.25rem 1rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .bpc-item-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.2rem;
+    }
+
+    .bpc-item-desc {
+        display: none;
+    }
+}
