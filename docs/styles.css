@@ -2006,6 +2006,218 @@ h2 {
 }
 
 /* ═══════════════════════════════════════════════ */
+/* NAV — PRODUCTS DROPDOWN                         */
+/* ═══════════════════════════════════════════════ */
+
+/* Tighten gap to fit more items */
+.nav-links {
+    gap: 1.4rem;
+}
+
+/* Dropdown wrapper */
+.nav-dropdown {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* The "Products" trigger button */
+.nav-dropdown-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-head);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0;
+    transition: color var(--transition);
+    white-space: nowrap;
+}
+
+.nav-dropdown-toggle:hover {
+    color: var(--accent-gold);
+}
+
+.nav-chevron {
+    font-size: 0.6rem;
+    transition: transform 0.25s ease;
+    opacity: 0.7;
+}
+
+/* Rotate chevron on hover/open */
+.nav-dropdown:hover .nav-chevron,
+.nav-dropdown.open .nav-chevron {
+    transform: rotate(180deg);
+    opacity: 1;
+}
+
+/* Dropdown panel */
+.nav-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 1rem);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #18181f;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 0.5rem;
+    min-width: 260px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 217, 255, 0.06);
+    z-index: 300;
+    list-style: none;
+    /* subtle entrance animation */
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-6px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+/* Show on desktop hover */
+.nav-dropdown:hover .nav-dropdown-menu {
+    display: block;
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Dropdown item links */
+.nav-dropdown-menu li a {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.7rem 0.75rem;
+    border-radius: var(--radius);
+    text-decoration: none;
+    transition: background var(--transition);
+    font-size: 0.8rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-muted);
+}
+
+/* Suppress the underline hover animation on dropdown links */
+.nav-dropdown-menu li a::after {
+    display: none !important;
+}
+
+.nav-dropdown-menu li a:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-white);
+}
+
+/* Icon bubble */
+.ndm-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(0, 217, 255, 0.08);
+    border: 1px solid rgba(0, 217, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-gold);
+    font-size: 0.82rem;
+    flex-shrink: 0;
+    transition: background var(--transition), border-color var(--transition);
+}
+
+.nav-dropdown-menu li a:hover .ndm-icon {
+    background: rgba(0, 217, 255, 0.14);
+    border-color: rgba(0, 217, 255, 0.25);
+}
+
+/* Text block */
+.ndm-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.ndm-title {
+    font-family: var(--font-head);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-white);
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+}
+
+.ndm-sub {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-family: var(--font-body);
+    letter-spacing: 0;
+}
+
+/* Divider between dropdown items */
+.nav-dropdown-menu li + li {
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* ─── Mobile dropdown (accordion style) ──────── */
+@media (max-width: 768px) {
+    /* Reset gap back for stacked mobile nav */
+    .nav-links {
+        gap: 1.5rem;
+    }
+
+    /* Disable CSS hover; use JS .open class instead */
+    .nav-dropdown:hover .nav-dropdown-menu {
+        display: none;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .nav-dropdown-toggle {
+        width: 100%;
+        justify-content: space-between;
+        font-size: 0.85rem;
+    }
+
+    .nav-dropdown.open .nav-dropdown-menu {
+        display: block !important;
+        opacity: 1 !important;
+        pointer-events: all !important;
+        position: static;
+        transform: none;
+        box-shadow: none;
+        background: rgba(255, 255, 255, 0.03);
+        border: none;
+        border-left: 2px solid rgba(0, 217, 255, 0.25);
+        border-radius: 0;
+        padding: 0.25rem 0 0.25rem 0.5rem;
+        margin-top: 0.5rem;
+        min-width: unset;
+    }
+
+    .nav-dropdown-menu li + li {
+        border-top: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .nav-dropdown-menu li a {
+        padding: 0.55rem 0.5rem;
+        gap: 0.65rem;
+    }
+
+    .ndm-sub {
+        display: none;
+    }
+
+    .ndm-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 0.7rem;
+    }
+}
+
+/* ═══════════════════════════════════════════════ */
 /* BUNDLES PAGE                                    */
 /* ═══════════════════════════════════════════════ */
 
