@@ -20,17 +20,7 @@ public:
 
     juce::String getSavedKey() const { return savedKey; }
 
-    // Trial management
-    static constexpr int trialDurationDays = 14;
-    void initializeTrial();
-    bool isTrialActive() const;
-    bool isTrialExpired() const;
-    int getTrialDaysRemaining() const;
-
 private:
     juce::String savedKey;
     juce::String productPermalink = "howlingwolvesvst"; // Hardcoded
-
-    juce::File getTrialFile() const;
-    juce::Time getTrialStartTime() const;
 };

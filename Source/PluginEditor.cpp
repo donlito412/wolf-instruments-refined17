@@ -126,48 +126,17 @@ HowlingWolvesAudioProcessorEditor::HowlingWolvesAudioProcessorEditor(
     presetBrowser.setVisible(false);
   };
 
-  // Setup License / Trial
+  // Setup License Overlay
   if (!audioProcessor.checkLicenseValid()) {
-    auto& lm = audioProcessor.getLicenseManager();
-    if (lm.isTrialExpired()) {
-      // Trial over — show blocking activation overlay
-      licenseOverlay = std::make_unique<LicenseActivationOverlay>(
-          audioProcessor.getLicenseManager(), [this]() {
-            audioProcessor.setLicenseValid(true);
-            if (licenseOverlay != nullptr)
-              licenseOverlay->setVisible(false);
-          }, true /* trialExpired */);
-      addChildComponent(licenseOverlay.get());
-      licenseOverlay->setVisible(true);
-      licenseOverlay->toFront(true);
-    } else {
-      // Trial active — show amber banner + activate button in top bar
-      int days = lm.getTrialDaysRemaining();
-      trialBanner.setText("TRIAL  \xc2\xb7  " + juce::String(days) +
-                          (days == 1 ? " day remaining" : " days remaining"),
-                          juce::dontSendNotification);
-      trialBanner.setFont(juce::Font(11.0f, juce::Font::bold));
-      trialBanner.setColour(juce::Label::textColourId, juce::Colour(0xFFFFAA00));
-      trialBanner.setJustificationType(juce::Justification::centredLeft);
-      addAndMakeVisible(trialBanner);
-
-      activateButton.onClick = [this]() {
-        if (licenseOverlay == nullptr) {
-          licenseOverlay = std::make_unique<LicenseActivationOverlay>(
-              audioProcessor.getLicenseManager(), [this]() {
-                audioProcessor.setLicenseValid(true);
-                if (licenseOverlay != nullptr)
-                  licenseOverlay->setVisible(false);
-                trialBanner.setVisible(false);
-                activateButton.setVisible(false);
-              });
-          addChildComponent(licenseOverlay.get());
-        }
-        licenseOverlay->setVisible(true);
-        licenseOverlay->toFront(true);
-      };
-      addAndMakeVisible(activateButton);
-    }
+    licenseOverlay = std::make_unique<LicenseActivationOverlay>(
+        audioProcessor.getLicenseManager(), [this]() {
+          audioProcessor.setLicenseValid(true);
+          if (licenseOverlay != nullptr)
+            licenseOverlay->setVisible(false);
+        });
+    addChildComponent(licenseOverlay.get());
+    licenseOverlay->setVisible(true);
+    licenseOverlay->toFront(true);
   }
 
   // Force initial layout and paint to prevent stall
@@ -185,7 +154,6 @@ HowlingWolvesAudioProcessorEditor::~HowlingWolvesAudioProcessorEditor() {
   saveButton.onClick = nullptr;
   settingsButton.onClick = nullptr;
   tipsButton.onClick = nullptr;
-  activateButton.onClick = nullptr;
 
   // Clean up look and feel
   stopTimer();
@@ -213,10 +181,6 @@ void HowlingWolvesAudioProcessorEditor::resized() {
 
   // Top bar (35px)
   auto topBar = area.removeFromTop(35);
-
-  // Trial banner (left side of top bar, only visible during active trial)
-  trialBanner.setBounds(10, 5, 200, 25);
-  activateButton.setBounds(215, 5, 80, 25);
 
   // Top bar buttons (right side)
   auto buttonArea = topBar.removeFromRight(360).reduced(5); // Increased width

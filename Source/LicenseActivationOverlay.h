@@ -11,8 +11,7 @@
 class LicenseActivationOverlay : public juce::Component {
 public:
   LicenseActivationOverlay(LicenseManager &lm,
-                           std::function<void()> onActivationSuccess,
-                           bool trialExpired = false);
+                           std::function<void()> onActivationSuccess);
   ~LicenseActivationOverlay() override;
 
   void paint(juce::Graphics &) override;

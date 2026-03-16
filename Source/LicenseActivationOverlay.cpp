@@ -2,7 +2,7 @@
 
 //==============================================================================
 LicenseActivationOverlay::LicenseActivationOverlay(
-    LicenseManager &lm, std::function<void()> onActivationSuccess, bool trialExpired)
+    LicenseManager &lm, std::function<void()> onActivationSuccess)
     : licenseManager(lm), onSuccessCallback(onActivationSuccess) {
   // Setup background styling
   setOpaque(false);
@@ -15,10 +15,9 @@ LicenseActivationOverlay::LicenseActivationOverlay(
   addAndMakeVisible(titleLabel);
 
   // Description Label
-  juce::String descText = trialExpired
-      ? "Your 14-day free trial has ended. Enter your license key to continue."
-      : "Please enter your Gumroad License Key to activate this plugin.";
-  descLabel.setText(descText, juce::dontSendNotification);
+  descLabel.setText(
+      "Please enter your Gumroad License Key to activate this plugin.",
+      juce::dontSendNotification);
   descLabel.setFont(juce::Font(16.0f));
   descLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
   descLabel.setJustificationType(juce::Justification::centred);

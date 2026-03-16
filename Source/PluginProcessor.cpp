@@ -17,10 +17,6 @@ HowlingWolvesAudioProcessor::HowlingWolvesAudioProcessor()
 
   // Load saved license from disk on plugin startup
   isLicenseValid.store(licenseManager.loadSavedLicense());
-
-  // Start trial timer on first launch if not licensed
-  if (!isLicenseValid.load())
-    licenseManager.initializeTrial();
 }
 
 HowlingWolvesAudioProcessor::~HowlingWolvesAudioProcessor() {
@@ -119,8 +115,8 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   // Clear the buffer to prevent static/garbage noise
   buffer.clear();
 
-  // --- AUDIO PROTECTION: BYPASS IF UNLICENSED AND TRIAL EXPIRED ---
-  if (!isLicenseValid.load() && licenseManager.isTrialExpired()) {
+  // --- AUDIO PROTECTION: BYPASS IF UNLICENSED ---
+  if (!isLicenseValid.load()) {
     return; // Output pure silence
   }
 

@@ -70,10 +70,6 @@ private:
 
   std::unique_ptr<LicenseActivationOverlay> licenseOverlay;
 
-  // Trial UI (shown when trial is active but not expired)
-  juce::Label trialBanner;
-  juce::TextButton activateButton{"ACTIVATE"};
-
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(
       HowlingWolvesAudioProcessorEditor)
 };
