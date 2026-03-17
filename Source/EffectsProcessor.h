@@ -22,7 +22,8 @@ public:
 
   void updateParameters(float distDrive, float distMix, float delayTime,
                         float delayFeedback, float delayMix, float reverbSize,
-                        float reverbDamping, float reverbMix, float biteAmount);
+                        float reverbDecay, float reverbDamping, float reverbMix,
+                        float biteAmount);
 
 private:
   // Helper for smoothing
@@ -87,6 +88,11 @@ private:
   juce::dsp::StateVariableTPTFilter<float> meterFilterLow;
   juce::dsp::StateVariableTPTFilter<float> meterFilterMid;
   juce::dsp::StateVariableTPTFilter<float> meterFilterHigh;
+
+  // Scratch buffers (avoid allocating on audio thread)
+  juce::AudioBuffer<float> meterScratchLow;
+  juce::AudioBuffer<float> meterScratchMid;
+  juce::AudioBuffer<float> meterScratchHigh;
 
   // Bitcrusher
   float bitcrushPhase = 0.0f;

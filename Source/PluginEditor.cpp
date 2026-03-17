@@ -1,5 +1,7 @@
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
+#include "ModulateTab.h"
+#include "PerformTab.h"
 
 //==============================================================================
 HowlingWolvesAudioProcessorEditor::HowlingWolvesAudioProcessorEditor(
@@ -28,9 +30,6 @@ HowlingWolvesAudioProcessorEditor::HowlingWolvesAudioProcessorEditor(
 
   // Set initial size
   setSize(800, 545);
-
-#include "ModulateTab.h"
-#include "PerformTab.h"
 
   // ... inside constructor ...
   // Create and add tabs
@@ -218,13 +217,3 @@ void HowlingWolvesAudioProcessorEditor::resized() {
     licenseOverlay->setBounds(getLocalBounds());
   }
 }
-
-// FORCE COMPILATION OF SKIPPED UI MODULES
-// Due to macOS Gatekeeper locking the build cache, CMake failed to register
-// these new components in the build manifest. This directly injects their
-// implementations into the Editor translation unit so the linker operates
-// flawlessly.
-#include "CustomKnobLookAndFeel.cpp"
-#include "ModernCyberLookAndFeel.cpp"
-#include "PremiumKnobLookAndFeel.cpp"
-#include "VerticalFaderLookAndFeel.cpp"

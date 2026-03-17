@@ -5,9 +5,6 @@
 //==============================================================================
 
 HowlingVoice::HowlingVoice() {
-  // Placeholder init
-  lfo.initialise([](float x) { return std::sin(x); });
-
   // Initialize ADSR with default
   adsr.setSampleRate(44100.0); // Will be updated in prepare
   adsrParams = {0.1f, 0.1f, 1.0f, 0.1f};
@@ -40,7 +37,8 @@ void HowlingVoice::prepare(double sampleRate, int samplesPerBlock) {
   filter.prepare(spec);
   filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
 
-  lfo.prepare(spec);
+  lfoSampleRate = sampleRate;
+  lfoPhaseAcc = 0.0f;
 
   adsr.setSampleRate(sampleRate);
 
@@ -51,6 +49,7 @@ void HowlingVoice::prepare(double sampleRate, int samplesPerBlock) {
 
   // Resize temp buffer for processing
   tempBuffer.setSize(1, samplesPerBlock); // Mono voice
+  bassHighBuffer.setSize(1, samplesPerBlock);
 }
 
 void HowlingVoice::updateFilter(float cutoff, float resonance, int filterType) {
@@ -83,9 +82,13 @@ void HowlingVoice::updateFilter(float cutoff, float resonance, int filterType) {
   }
 }
 
-void HowlingVoice::updateLFO(float rate, float depth) {
-  lfo.setFrequency(rate);
+void HowlingVoice::updateLFO(float rate, float depth, float phase01) {
+  lfoRate = rate;
+  lfoIncrement = (float)(juce::MathConstants<double>::twoPi * (double)rate /
+                         (lfoSampleRate > 1.0 ? lfoSampleRate : 44100.0));
   lfoDepth = depth;
+  lfoPhaseOffset =
+      juce::jlimit(0.0f, 1.0f, phase01) * juce::MathConstants<float>::twoPi;
 }
 
 void HowlingVoice::updateADSR(float attack, float decay, float sustain,
@@ -107,6 +110,23 @@ void HowlingVoice::updateSampleParams(float tune, float sampleStart,
 
 void HowlingVoice::setPan(float newPan) { pan = newPan; }
 
+void HowlingVoice::setAmpVelocity(float amount01) {
+  ampVelocityAmount = juce::jlimit(0.0f, 1.0f, amount01);
+}
+
+void HowlingVoice::setFilterDrive(float drive01) {
+  filterDrive = juce::jlimit(0.0f, 1.0f, drive01);
+}
+
+void HowlingVoice::setModSmooth(float smooth01) {
+  modSmooth = juce::jlimit(0.0f, 1.0f, smooth01);
+}
+
+void HowlingVoice::setLFOPhase(float phase01) {
+  lfoPhaseOffset =
+      juce::jlimit(0.0f, 1.0f, phase01) * juce::MathConstants<float>::twoPi;
+}
+
 void HowlingVoice::startNote(int midiNoteNumber, float velocity,
                              juce::SynthesiserSound *sound,
                              int currentPitchWheelPosition) {
@@ -125,10 +145,12 @@ void HowlingVoice::startNote(int midiNoteNumber, float velocity,
 
   crossoverFilter.reset();
 
+  noteVelocity = juce::jlimit(0.0f, 1.0f, velocity);
   adsr.noteOn();
   modAdsr.noteOn(); // Trigger Mod Env
   filter.reset();
-  lfo.reset();
+  lfoPhaseAcc = 0.0f;
+  smoothedModEnv = 0.0f;
 }
 
 void HowlingVoice::stopNote(float velocity, bool allowTailOff) {
@@ -173,8 +195,16 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
 
   // 3. Filter Processing & Mod Env Application
   for (int i = 0; i < numSamples; ++i) {
-    float lfoValue = lfo.processSample(0.0f);
-    float modEnvVal = modAdsr.getNextSample(); // 0.0 to 1.0 (sustain level etc)
+    float lfoValue = std::sin(lfoPhaseAcc + lfoPhaseOffset);
+    lfoPhaseAcc += lfoIncrement;
+    if (lfoPhaseAcc >= juce::MathConstants<float>::twoPi)
+      lfoPhaseAcc -= juce::MathConstants<float>::twoPi;
+
+    float modEnvVal = modAdsr.getNextSample(); // 0..1
+    // Simple one-pole smoothing: 0=more smoothing, 1=less smoothing
+    float alpha = 0.02f + (1.0f - modSmooth) * 0.18f; // 0.02..0.20
+    smoothedModEnv += (modEnvVal - smoothedModEnv) * alpha;
+    modEnvVal = smoothedModEnv;
 
     // Calculate effective LFO + Mod modulation
     // Mod Target 0: Cutoff (Default)
@@ -199,6 +229,16 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
     filter.setResonance(baseResonance);
 
     float input = bufferData[i];
+
+    // Extra velocity sensitivity control (0=flat, 1=full)
+    float velGain = (1.0f - ampVelocityAmount) + (noteVelocity * ampVelocityAmount);
+    input *= velGain;
+
+    // Filter drive (simple saturation pre-filter)
+    if (filterDrive > 0.001f) {
+      float driveGain = 1.0f + (filterDrive * 12.0f);
+      input = std::tanh(input * driveGain);
+    }
 
     // Apply Mod Env to Vol/Pan/Pitch if selected
     if (modTarget == 1) { // Volume
@@ -262,9 +302,10 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
     // and subtract from original to get Highs?
     // (Linkwitz-Riley sums flat).
 
-    // Create a copy for Highs
-    juce::AudioBuffer<float> highBuffer;
-    highBuffer.makeCopyOf(tempBuffer);
+    // Copy for Highs (preallocated)
+    if (bassHighBuffer.getNumSamples() < numSamples)
+      bassHighBuffer.setSize(1, numSamples, false, false, true);
+    bassHighBuffer.makeCopyOf(tempBuffer, true);
 
     // Process tempBuffer (Lows)
     juce::dsp::AudioBlock<float> block(tempBuffer);
@@ -273,9 +314,9 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
     crossoverFilter.process(context);
 
     // Now tempBuffer contains Lows.
-    // Highs = Original (highBuffer) - Lows (tempBuffer)
-    highBuffer.addFrom(0, 0, tempBuffer.getReadPointer(0), numSamples,
-                       -1.0f); // Subtract
+    // Highs = Original (bassHighBuffer) - Lows (tempBuffer)
+    bassHighBuffer.addFrom(0, 0, tempBuffer.getReadPointer(0), numSamples,
+                           -1.0f); // Subtract
 
     // Mix to Output
     for (int ch = 0; ch < outputBuffer.getNumChannels(); ++ch) {
@@ -303,7 +344,7 @@ void HowlingVoice::renderNextBlock(juce::AudioBuffer<float> &outputBuffer,
                            bassGain);
 
       // Add Highs (Panned)
-      outputBuffer.addFrom(ch, startSample, highBuffer, 0, 0, numSamples,
+      outputBuffer.addFrom(ch, startSample, bassHighBuffer, 0, 0, numSamples,
                            panGain);
     }
   } else {
@@ -365,7 +406,21 @@ void SynthEngine::updateParams(float attack, float decay, float sustain,
     if (auto *voice = dynamic_cast<HowlingVoice *>(getVoice(i))) {
       voice->updateADSR(attack, decay, sustain, release);
       voice->updateFilter(cutoff, resonance, filterType);
-      voice->updateLFO(lfoRate, lfoDepth);
+      voice->updateLFO(lfoRate, lfoDepth, 0.0f);
+    }
+  }
+}
+
+void SynthEngine::updateVoiceControls(float ampPan, float ampVelocity,
+                                      float filterDrive, float lfoPhase,
+                                      float modSmooth) {
+  for (int i = 0; i < getNumVoices(); ++i) {
+    if (auto *voice = dynamic_cast<HowlingVoice *>(getVoice(i))) {
+      voice->setPan(ampPan);
+      voice->setAmpVelocity(ampVelocity);
+      voice->setFilterDrive(filterDrive);
+      voice->setLFOPhase(lfoPhase);
+      voice->setModSmooth(modSmooth);
     }
   }
 }

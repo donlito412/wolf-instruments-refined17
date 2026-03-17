@@ -18,13 +18,13 @@ PlayTab::PlayTab(HowlingWolvesAudioProcessor &p)
 
   // --- 2. AMP ENVELOPE (TOP RIGHT) ---
   setupLabel(envTitle, "AMP ENVELOPE");
-  setupKnob(att, "ATT", "ampAttack", attAtt);
+  setupKnob(att, "ATT", "attack", attAtt);
   setupLabel(attLabel, "ATTACK");
-  setupKnob(dec, "DEC", "ampDecay", decAtt);
+  setupKnob(dec, "DEC", "decay", decAtt);
   setupLabel(decLabel, "DECAY");
-  setupKnob(sus, "SUS", "ampSustain", susAtt);
+  setupKnob(sus, "SUS", "sustain", susAtt);
   setupLabel(susLabel, "SUSTAIN");
-  setupKnob(rel, "REL", "ampRelease", relAtt);
+  setupKnob(rel, "REL", "release", relAtt);
   setupLabel(relLabel, "RELEASE");
 
   setupSlider(velocity, "VELOCITY", true, "ampVelocity", velAtt);

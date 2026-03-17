@@ -56,6 +56,13 @@ void EffectsProcessor::prepare(juce::dsp::ProcessSpec &spec) {
 
   // Reserve ramp buffer
   rampBuffer.reserve(spec.maximumBlockSize);
+
+  // Preallocate metering scratch buffers
+  const int channels = (int)spec.numChannels;
+  const int maxBlock = (int)spec.maximumBlockSize;
+  meterScratchLow.setSize(channels, maxBlock, false, false, true);
+  meterScratchMid.setSize(channels, maxBlock, false, false, true);
+  meterScratchHigh.setSize(channels, maxBlock, false, false, true);
 }
 
 void EffectsProcessor::reset() {
@@ -77,8 +84,8 @@ void EffectsProcessor::reset() {
 void EffectsProcessor::updateParameters(float distDrive, float distMix,
                                         float delayTime, float delayFeedback,
                                         float delayMix, float reverbSize,
-                                        float reverbDamping, float reverbMix,
-                                        float biteAmount) {
+                                        float reverbDecay, float reverbDamping,
+                                        float reverbMix, float biteAmount) {
   distDriveParam.setTargetValue(distDrive);
   distMixParam.setTargetValue(distMix);
   transientShaper.setAmount(biteAmount); // Shaper handles its own smoothing
@@ -88,7 +95,10 @@ void EffectsProcessor::updateParameters(float distDrive, float distMix,
   delayMixParam.setTargetValue(delayMix);
 
   // Map Reverb params
-  reverbParams.roomSize = reverbSize;
+  // JUCE Reverb doesn't expose a direct "decay time" parameter.
+  // We map DECAY -> roomSize and SIZE -> stereo width to keep both controls
+  // meaningful and independent.
+  reverbParams.roomSize = reverbDecay;
   reverbParams.damping = reverbDamping;
 
   // Revert to internal mixing to ensure Dry/Wet balance works without temp
@@ -96,7 +106,7 @@ void EffectsProcessor::updateParameters(float distDrive, float distMix,
   reverbParams.wetLevel = reverbMix;
   reverbParams.dryLevel = 1.0f - reverbMix;
 
-  reverbParams.width = 1.0f;
+  reverbParams.width = reverbSize;
   reverbParams.freezeMode = 0.0f;
 
   reverb.setParameters(reverbParams);
@@ -175,43 +185,43 @@ void EffectsProcessor::processBitcrusher(juce::AudioBuffer<float> &buffer) {
 }
 
 void EffectsProcessor::processMetering(const juce::AudioBuffer<float> &buffer) {
-  // Copy buffer for non-destructive analysis
-  juce::AudioBuffer<float> scratch;
-  scratch.makeCopyOf(buffer);
+  const int numSamples = buffer.getNumSamples();
+  const int numChannels = buffer.getNumChannels();
 
-  juce::dsp::AudioBlock<float> block(scratch);
-  juce::dsp::ProcessContextReplacing<float> context(block);
+  if (numSamples <= 0 || numChannels <= 0)
+    return;
 
-  // Apply bands and measure RMS
-  // To measure bands independently, we need 3 copies or process sequentially on
-  // distinct buffers? StateVariableFilter processes in place.
-  // 1. Low Band
+  // Ensure scratch buffers are big enough (should already be sized in prepare)
+  if (meterScratchLow.getNumSamples() < numSamples ||
+      meterScratchLow.getNumChannels() < numChannels) {
+    meterScratchLow.setSize(numChannels, numSamples, false, false, true);
+    meterScratchMid.setSize(numChannels, numSamples, false, false, true);
+    meterScratchHigh.setSize(numChannels, numSamples, false, false, true);
+  }
+
+  meterScratchLow.makeCopyOf(buffer, true);
+  meterScratchMid.makeCopyOf(buffer, true);
+  meterScratchHigh.makeCopyOf(buffer, true);
+
   {
-    juce::AudioBuffer<float> lowBuf;
-    lowBuf.makeCopyOf(buffer);
-    juce::dsp::AudioBlock<float> lowBlock(lowBuf);
+    juce::dsp::AudioBlock<float> lowBlock(meterScratchLow);
     juce::dsp::ProcessContextReplacing<float> lowCtx(lowBlock);
     meterFilterLow.process(lowCtx);
-    eqLow = lowBuf.getRMSLevel(0, 0, lowBuf.getNumSamples()) *
-            5.0f; // Signal is likely quiet after filtering, boost range
+    eqLow = meterScratchLow.getRMSLevel(0, 0, numSamples) * 5.0f;
   }
-  // 2. Mid Band
+
   {
-    juce::AudioBuffer<float> midBuf;
-    midBuf.makeCopyOf(buffer);
-    juce::dsp::AudioBlock<float> midBlock(midBuf);
+    juce::dsp::AudioBlock<float> midBlock(meterScratchMid);
     juce::dsp::ProcessContextReplacing<float> midCtx(midBlock);
     meterFilterMid.process(midCtx);
-    eqMid = midBuf.getRMSLevel(0, 0, midBuf.getNumSamples()) * 5.0f;
+    eqMid = meterScratchMid.getRMSLevel(0, 0, numSamples) * 5.0f;
   }
-  // 3. High Band
+
   {
-    juce::AudioBuffer<float> highBuf;
-    highBuf.makeCopyOf(buffer);
-    juce::dsp::AudioBlock<float> highBlock(highBuf);
+    juce::dsp::AudioBlock<float> highBlock(meterScratchHigh);
     juce::dsp::ProcessContextReplacing<float> highCtx(highBlock);
     meterFilterHigh.process(highCtx);
-    eqHigh = highBuf.getRMSLevel(0, 0, highBuf.getNumSamples()) * 5.0f;
+    eqHigh = meterScratchHigh.getRMSLevel(0, 0, numSamples) * 5.0f;
   }
 }
 

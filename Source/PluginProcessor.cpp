@@ -225,8 +225,13 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   auto *releaseParam = apvts.getRawParameterValue("release");
   auto *filterCutoffParam = apvts.getRawParameterValue("filterCutoff");
   auto *filterResParam = apvts.getRawParameterValue("filterRes");
+  auto *filterDriveParam = apvts.getRawParameterValue("filterDrive");
   auto *lfoRateParam = apvts.getRawParameterValue("lfoRate");
   auto *lfoDepthParam = apvts.getRawParameterValue("lfoDepth");
+  auto *lfoPhaseParam = apvts.getRawParameterValue("lfoPhase");
+  auto *modSmoothParam = apvts.getRawParameterValue("modSmooth");
+  auto *ampPanParam = apvts.getRawParameterValue("ampPan");
+  auto *ampVelocityParam = apvts.getRawParameterValue("ampVelocity");
 
   // Output Parameters
   auto *gainParam = apvts.getRawParameterValue("gain");
@@ -239,6 +244,7 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   auto *delayFdbk = apvts.getRawParameterValue("delayFeedback");
   auto *delayMix = apvts.getRawParameterValue("delayMix");
   auto *revSize = apvts.getRawParameterValue("reverbSize");
+  auto *revDecay = apvts.getRawParameterValue("reverbDecay");
   auto *revDamp = apvts.getRawParameterValue("reverbDamping");
   auto *revMix = apvts.getRawParameterValue("REVERB_MIX");
 
@@ -319,6 +325,7 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   auto *tuneParam = apvts.getRawParameterValue("tune");
   auto *startParam = apvts.getRawParameterValue("sampleStart");
   auto *endParam = apvts.getRawParameterValue("sampleEnd");
+  auto *lengthParam = apvts.getRawParameterValue("sampleLength");
   auto *loopParam = apvts.getRawParameterValue("sampleLoop");
 
   // Macros
@@ -331,6 +338,7 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   float tuneVal = tuneParam ? tuneParam->load() : 0.0f;
   float startVal = startParam ? startParam->load() : 0.0f;
   float endVal = endParam ? endParam->load() : 1.0f;
+  float lengthVal = lengthParam ? lengthParam->load() : 1.0f;
   bool loopVal = loopParam ? (loopParam->load() > 0.5f) : true;
 
   // Internal Transport Handling for Standalone
@@ -343,7 +351,26 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   // without keys" mode. BUT: MidiCapturer DOES check `active` or `recording`
   // state.
 
-  synthEngine.updateSampleParams(tuneVal, startVal, endVal, loopVal);
+  // If the UI is driving "sampleLength" (0..1), derive an end point from it.
+  // This keeps the LENGTH knob functional even if "sampleEnd" isn't exposed.
+  float effectiveEnd = endVal;
+  if (lengthParam) {
+    float clampedStart = juce::jlimit(0.0f, 1.0f, startVal);
+    float clampedLen = juce::jlimit(0.0f, 1.0f, lengthVal);
+    effectiveEnd = juce::jlimit(clampedStart, 1.0f,
+                                clampedStart + clampedLen * (1.0f - clampedStart));
+  }
+
+  synthEngine.updateSampleParams(tuneVal, startVal, effectiveEnd, loopVal);
+
+  // Voice-level controls
+  float ampPanVal = ampPanParam ? ampPanParam->load() : 0.0f;
+  float ampVelVal = ampVelocityParam ? ampVelocityParam->load() : 1.0f;
+  float driveVal = filterDriveParam ? filterDriveParam->load() : 0.0f;
+  float lfoPhaseVal = lfoPhaseParam ? lfoPhaseParam->load() : 0.0f;
+  float modSmoothVal = modSmoothParam ? modSmoothParam->load() : 0.1f;
+  synthEngine.updateVoiceControls(ampPanVal, ampVelVal, driveVal, lfoPhaseVal,
+                                  modSmoothVal);
 
   // Apply parameters to effects processor
 
@@ -374,6 +401,7 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   float delayFdbkVal = delayFdbk ? delayFdbk->load() : 0.3f; // Default 0.3
   float delayMixVal = delayMix ? delayMix->load() : 0.0f;
   float revSizeVal = revSize ? revSize->load() : 0.5f;
+  float revDecayVal = revDecay ? revDecay->load() : 0.5f;
   float revDampVal = revDamp ? revDamp->load() : 0.5f;
   float revMixVal = revMix ? revMix->load() : 0.0f;
 
@@ -381,6 +409,7 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   delayMixVal += (spaceVal * 0.4f);
   revMixVal += (spaceVal * 0.5f);
   revSizeVal += (spaceVal * 0.2f);
+  revDecayVal += (spaceVal * 0.2f);
 
   // Clamp values
   distDriveVal = juce::jlimit(0.0f, 1.0f, distDriveVal);
@@ -388,6 +417,7 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   delayMixVal = juce::jlimit(0.0f, 1.0f, delayMixVal);
   revMixVal = juce::jlimit(0.0f, 1.0f, revMixVal);
   revSizeVal = juce::jlimit(0.0f, 1.0f, revSizeVal);
+  revDecayVal = juce::jlimit(0.0f, 1.0f, revDecayVal);
 
   float biteVal = 0.0f;
   if (auto *biteParam = apvts.getRawParameterValue("BITE"))
@@ -395,7 +425,8 @@ void HowlingWolvesAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 
   effectsProcessor.updateParameters(distDriveVal, distMixVal, delayTimeVal,
                                     delayFdbkVal, delayMixVal, revSizeVal,
-                                    revDampVal, revMixVal, biteVal);
+                                    revDecayVal, revDampVal, revMixVal,
+                                    biteVal);
 
   // Update Toggles
   auto *huntParam = apvts.getRawParameterValue("huntOn");
@@ -508,6 +539,10 @@ HowlingWolvesAudioProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterFloat>("tune", "Tune", -12.0f,
                                                          12.0f, 0.0f));
 
+  // Standalone helpers
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "standaloneBPM", "Standalone BPM", 20.0f, 300.0f, 120.0f));
+
   // Attack, Decay, Sustain, Release (Simple ADSR for now, can be expanded)
   layout.add(std::make_unique<juce::AudioParameterFloat>("attack", "Attack",
                                                          0.01f, 5.0f, 0.1f));
@@ -619,6 +654,8 @@ HowlingWolvesAudioProcessor::createParameterLayout() {
   // Reverb
   layout.add(std::make_unique<juce::AudioParameterFloat>(
       "reverbSize", "Reverb Size", 0.0f, 1.0f, 0.5f));
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      "reverbDecay", "Reverb Decay", 0.0f, 1.0f, 0.5f));
   layout.add(std::make_unique<juce::AudioParameterFloat>(
       "reverbDamping", "Reverb Damping", 0.0f, 1.0f, 0.5f));
   layout.add(std::make_unique<juce::AudioParameterFloat>(

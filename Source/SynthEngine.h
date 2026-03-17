@@ -44,7 +44,7 @@ public:
 
   // DSP Parameters
   void updateFilter(float cutoff, float resonance, int filterType);
-  void updateLFO(float rate, float depth);
+  void updateLFO(float rate, float depth, float phase01);
   void prepare(double sampleRate, int samplesPerBlock);
 
   // Overrides for ADSR control
@@ -57,6 +57,10 @@ public:
   void updateSampleParams(float tune, float sampleStart, float sampleEnd,
                           bool loop);
   void setPan(float newPan);
+  void setAmpVelocity(float amount01);
+  void setFilterDrive(float drive01);
+  void setModSmooth(float smooth01);
+  void setLFOPhase(float phase01);
 
   // Override render to add post-processing (Filter)
   void renderNextBlock(juce::AudioBuffer<float> &outputBuffer, int startSample,
@@ -67,9 +71,18 @@ public:
 
 private:
   juce::dsp::StateVariableTPTFilter<float> filter;
-  juce::dsp::Oscillator<float> lfo; // For filter modulation
+  // Manual LFO so we can support phase offset deterministically
+  double lfoSampleRate = 44100.0;
+  float lfoPhaseAcc = 0.0f;        // radians
+  float lfoPhaseOffset = 0.0f;     // radians
+  float lfoIncrement = 0.0f;       // radians per sample
   float lfoDepth = 0.0f;
   float pan = 0.0f; // -1.0 (Left) to 1.0 (Right)
+  float ampVelocityAmount = 1.0f; // 0..1
+  float noteVelocity = 1.0f;      // 0..1 (captured at noteOn)
+  float filterDrive = 0.0f;       // 0..1
+  float modSmooth = 0.1f;         // 0..1
+  float smoothedModEnv = 0.0f;
 
   juce::ADSR adsr;
   juce::ADSR::Parameters adsrParams;
@@ -104,6 +117,7 @@ public: // Accessor needed for setup
   bool isNotch = false;
 
   juce::AudioBuffer<float> tempBuffer;
+  juce::AudioBuffer<float> bassHighBuffer;
 
   JUCE_LEAK_DETECTOR(HowlingVoice)
 };
@@ -123,6 +137,9 @@ public:
   void updateParams(float attack, float decay, float sustain, float release,
                     float cutoff, float resonance, int filterType,
                     float lfoRate, float lfoDepth);
+
+  void updateVoiceControls(float ampPan, float ampVelocity, float filterDrive,
+                           float lfoPhase, float modSmooth);
 
   void updateModParams(float attack, float decay, float sustain, float release,
                        float amount, int target); // New Mod Env Params
